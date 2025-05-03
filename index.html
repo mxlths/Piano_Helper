@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piano Helper</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/addons/p5.sound.min.js"></script>
+</head>
+<body>
+    <h1>Piano Helper</h1>
+
+    <div id="controls">
+        <!-- UI Controls (dropdowns, buttons) will go here -->
+        <p>Controls Area</p>
+    </div>
+
+    <div id="canvas-container">
+        <!-- p5.js canvas will be inserted here by sketch.js -->
+    </div>
+
+    <div id="info-display">
+        <!-- Textual info (scale/chord names, formulas) will go here -->
+        <p>Info Display Area</p>
+    </div>
+
+    <script src="musicLogic.js"></script>
+    <script src="displayManager.js"></script>
+    <script src="metronomeEngine.js"></script>
+    <script src="midiHandler.js"></script>
+    <script src="sketch.js"></script>
+    <!-- We will add our module JS files here later -->
+
+    <div id="midi-monitor">MIDI Monitor</div>
+</body>
+</html> 

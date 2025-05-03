@@ -1,0 +1,48 @@
+body {
+    font-family: sans-serif;
+    margin: 20px;
+    background-color: #f0f0f0;
+}
+
+h1 {
+    text-align: center;
+}
+
+#canvas-container {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    /* Center the canvas */
+    display: flex;
+    justify-content: center;
+}
+
+#controls,
+#info-display {
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+}
+
+/* Basic styling for potential future buttons/selects */
+button, select {
+    padding: 5px 10px;
+    margin: 5px;
+}
+
+#midi-monitor {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    width: 250px;
+    height: 150px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #0f0; /* Green text */
+    border: 1px solid #555;
+    font-family: monospace;
+    font-size: 12px;
+    padding: 5px;
+    overflow-y: scroll; /* Add scrollbar if content overflows */
+    white-space: pre-wrap; /* Preserve whitespace formatting */
+    z-index: 100; /* Ensure it stays on top */
+} 
