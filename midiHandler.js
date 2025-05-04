@@ -52,7 +52,7 @@ class MidiHandler {
         this.logger("MidiHandler: Stored devicesUpdatedCallback.");
 
         this.initializePromise = new Promise((resolve, reject) => {
-            this.logger("MidiHandler: Calling WebMidi.enable({ sysex: true })...");
+            this.logger("MidiHandler: Calling WebMidi.enable({ sysex: false })...");
             WebMidi.enable((err) => {
                 this.isInitializing = false; // Reset flag when done
                 if (err) {
@@ -78,7 +78,7 @@ class MidiHandler {
                     
                     resolve(true); // Indicate success
                 }
-            }, { sysex: true }); // Request SysEx, matching midi-monitor
+            }, { sysex: false }); // Request WITHOUT SysEx
         });
 
         return this.initializePromise;
