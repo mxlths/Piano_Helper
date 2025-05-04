@@ -3,5 +3,4 @@ description:
 globs: 
 alwaysApply: true
 ---
-Every time we make a change, please update our version counter in the top right of the page so that I can confirm I am testing the correct version in the browser.
 You can always ask to see the midi-monitor example code.

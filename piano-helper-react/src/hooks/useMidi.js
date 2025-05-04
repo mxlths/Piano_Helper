@@ -86,13 +86,13 @@ function useMidi() {
       }, { sysex: false }); // Start with sysex: false for broader compatibility
     }
     // Cleanup function (optional, but good practice)
-    // return () => {
-    //   if (WebMidi.enabled) {
-    //     log('Disabling WebMidi...');
-    //     WebMidi.disable();
-    //     setIsInitialized(false);
-    //   }
-    // };
+    return () => {
+      if (WebMidi.enabled) {
+        log('Disabling WebMidi...');
+        WebMidi.disable();
+        setIsInitialized(false);
+      }
+    };
   }, [isInitialized, log, updateDeviceLists]); // Depend on isInitialized to prevent re-running if already enabled
 
   // Effect for handling device connection/disconnection listeners
@@ -187,19 +187,34 @@ function useMidi() {
     // Add listener to new input
     if (id) {
       // Log available inputs right before trying to get by ID
-      const availableInputIds = WebMidi.inputs.map(i => i.id);
+      const availableInputIds = WebMidi.inputs ? WebMidi.inputs.map(i => i.id) : [];
       log(`Trying to find input ID: ${id}. Available input IDs: [${availableInputIds.join(', ')}]`);
-
-      // WORKAROUND: Manually find the input device instead of relying solely on getInputById
-      // const inputDevice = WebMidi.getInputById(id);
-      const inputDevice = WebMidi.inputs.find(input => input.id === id);
+      
+      // If inputs array looks okay, try finding immediately first
+      let inputDevice = null;
+      if (WebMidi.inputs && WebMidi.inputs.length > 0) {
+          inputDevice = WebMidi.inputs.find(input => input.id === id);
+      }
 
       if (inputDevice) {
+        log(`Found device immediately via .find(): ${inputDevice.name}`);
         log(`Adding listener to new input: ${inputDevice.name}`);
         inputDevice.addListener('midimessage', 'all', handleIncomingMidiMessage);
-        selectedInputRef.current = inputDevice; // Store reference to the selected device
+        selectedInputRef.current = inputDevice; // Store reference
       } else {
-        log(`Could not find input device with ID: ${id}`, 'ERROR');
+        // If not found immediately (or inputs was empty), try getInputById after a tiny delay
+        log(`Device not found immediately with .find(). Trying getInputById after 10ms delay...`);
+        setTimeout(() => {
+            const delayedInputDevice = WebMidi.getInputById(id);
+            if (delayedInputDevice) {
+                log(`Found device via getInputById after delay: ${delayedInputDevice.name}`);
+                log(`Adding listener to new input: ${delayedInputDevice.name}`);
+                delayedInputDevice.addListener('midimessage', 'all', handleIncomingMidiMessage);
+                selectedInputRef.current = delayedInputDevice; // Store reference
+            } else {
+                log(`Could not find input device with ID: ${id} even after delay.`, 'ERROR');
+            }
+        }, 10); // 10ms delay - adjust if necessary
       }
     } else {
         log("Input deselected.");
