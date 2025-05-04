@@ -36,6 +36,8 @@ function Controls({
   onChangeMetronomeTimeSignature,
 }) {
 
+  console.log('Controls.jsx - Received rootNotes prop:', rootNotes);
+
   const handleInputChange = (event) => {
     onSelectInput(event.target.value || null); // Pass null if default option selected
   };

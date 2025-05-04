@@ -107,6 +107,8 @@ function App() {
     }
   };
 
+  console.log('App.jsx - ROOT_NOTES:', ROOT_NOTES); // <-- Add console log here
+
   return (
     <div className="App">
       <h1>Piano Helper (React Version)</h1>
