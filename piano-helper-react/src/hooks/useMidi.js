@@ -72,7 +72,7 @@ function useMidi() {
     }
 
     if (!isInitialized) {
-      log('Attempting to enable WebMidi (sysex: false)...');
+      log('Attempting to enable WebMidi (sysex: true)...');
       WebMidi.enable((err) => {
         if (err) {
           log(`WebMidi.enable() failed: ${err.message}`, 'ERROR');
@@ -83,7 +83,7 @@ function useMidi() {
           setIsInitialized(true);
           updateDeviceLists(); // Update lists immediately after enable
         }
-      }, { sysex: false }); // Start with sysex: false for broader compatibility
+      }, { sysex: true }); // Changed to true
     }
   }, [isInitialized, log, updateDeviceLists]); // Depend on isInitialized to prevent re-running if already enabled
 
