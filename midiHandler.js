@@ -1,5 +1,5 @@
 class MidiHandler {
-    constructor() {
+    constructor(logFunction) {
         this.midiAccess = null; // Stores the result of requestMIDIAccess
         this.inputs = [];       // Array of available MIDIInput objects
         this.outputs = [];      // Array of available MIDIOutput objects
@@ -11,7 +11,10 @@ class MidiHandler {
         this.onMessageCallback = null; // Function to call when a MIDI message arrives
         this.onDevicesUpdatedCallback = null; // ADDED: Callback for UI refresh
 
-        console.log("MidiHandler module initialized");
+        // Store the passed-in logger function
+        this.logger = typeof logFunction === 'function' ? logFunction : console.log; 
+
+        this.logger("MidiHandler module initialized");
     }
 
     /**
@@ -19,62 +22,110 @@ class MidiHandler {
      * @param {function} devicesUpdatedCallback - Function to call when device list might have changed.
      * @returns {Promise<boolean>} True if successful, false otherwise.
      */
-    async initialize(devicesUpdatedCallback) { // ADDED parameter
+    async initialize(devicesUpdatedCallback) {
+        this.logger("MidiHandler: initialize() called."); // Use logger
         if (!navigator.requestMIDIAccess) {
-            console.error("Web MIDI API is not supported in this browser.");
+            this.logger("Web MIDI API is not supported in this browser.", 'ERROR'); // Use logger
             alert("Web MIDI API is not supported in this browser.");
             return false;
         }
-        this.onDevicesUpdatedCallback = devicesUpdatedCallback; // Store callback
+        this.onDevicesUpdatedCallback = devicesUpdatedCallback;
+        this.logger("MidiHandler: Stored devicesUpdatedCallback."); // Use logger
 
         try {
+            this.logger("MidiHandler: Requesting MIDI access with sysex: true..."); // Use logger
             this.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
-            console.log("MIDI Access Granted (with SysEx requested):", this.midiAccess);
+            this.logger("MidiHandler: MIDI Access Granted object received."); // Use logger (don't log the whole object)
+            // Log specific properties for confirmation
+            this.logger(`MidiHandler: midiAccess.inputs available: ${!!this.midiAccess?.inputs}`);
+            this.logger(`MidiHandler: midiAccess.outputs available: ${!!this.midiAccess?.outputs}`);
 
-            // Add listeners FIRST (in case state changes immediately)
+            // Check if midiAccess object looks valid immediately after getting it
+            if (!this.midiAccess || !this.midiAccess.inputs || !this.midiAccess.outputs) {
+                 this.logger("MidiHandler: midiAccess object seems invalid or missing inputs/outputs properties after request.", 'ERROR'); // Use logger
+                 alert("Failed to get valid MIDI access object properties.");
+                 return false;
+            }
+            this.logger("MidiHandler: midiAccess object appears valid. Proceeding with setup."); // Use logger
+
             this.midiAccess.onstatechange = (event) => {
-                console.log(`MIDI state changed: ${event.port.name} (${event.port.type}) - ${event.port.state}`);
+                this.logger(`MidiHandler: MIDI statechange event triggered for port: ${event.port.name} (${event.port.type}) - ${event.port.state}`); // Use logger
                 this.updateDeviceLists();
             };
+            this.logger("MidiHandler: Added onstatechange listener."); // Use logger
 
-            // Get initial lists of inputs and outputs
-            this.updateDeviceLists(); // This will now trigger the callback
+            this.logger("MidiHandler: Calling updateDeviceLists() for the first time..."); // Use logger
+            this.updateDeviceLists();
+            this.logger("MidiHandler: Initial updateDeviceLists() call finished."); // Use logger
 
             return true;
         } catch (err) {
-            console.error("Failed to get MIDI access:", err);
-            alert(`Failed to get MIDI access: ${err}`);
+            this.logger(`MidiHandler: Failed to get MIDI access: ${err.name} - ${err.message}`, 'ERROR'); // Use logger
+            // Check for specific error types if possible
+            if (err.name === 'SecurityError') {
+                alert('Failed to get MIDI access: Permission denied or system configuration issue. Ensure you granted permission and SysEx is allowed if needed.');
+            } else {
+                alert(`Failed to get MIDI access: ${err.name} - ${err.message}`);
+            }
             return false;
         }
     }
 
     /** Updates the internal lists of inputs and outputs */
     updateDeviceLists() {
-        if (!this.midiAccess) return;
-        console.log("--- Updating device lists ---"); // Log entry
+        this.logger("MidiHandler: updateDeviceLists() called."); // Use logger
+        if (!this.midiAccess) {
+            this.logger("MidiHandler: updateDeviceLists called but midiAccess is null.", 'WARN'); // Use logger
+            return;
+        }
+        this.logger("--- MidiHandler: Updating device lists ---"); // Use logger
 
-        this.inputs = Array.from(this.midiAccess.inputs.values());
-        this.outputs = Array.from(this.midiAccess.outputs.values());
+        this.logger("MidiHandler: Accessing midiAccess.inputs..."); // Use logger
+        try {
+            this.inputs = Array.from(this.midiAccess.inputs.values());
+            this.logger(`MidiHandler: Got inputs, count: ${this.inputs.length}`); // Use logger
+        } catch (e) {
+             this.logger(`MidiHandler: Error accessing midiAccess.inputs: ${e.message}`, 'ERROR');
+             this.inputs = []; // Reset inputs on error
+        }
+
+        this.logger("MidiHandler: Accessing midiAccess.outputs..."); // Use logger
+         try {
+            this.outputs = Array.from(this.midiAccess.outputs.values());
+            this.logger(`MidiHandler: Got outputs, count: ${this.outputs.length}`); // Use logger
+        } catch (e) {
+             this.logger(`MidiHandler: Error accessing midiAccess.outputs: ${e.message}`, 'ERROR');
+             this.outputs = []; // Reset outputs on error
+        }
+        
 
         // Log exactly what was found THIS time
-        console.log("Found Inputs:", this.inputs.map(i => i.name));
-        console.log("Found Outputs:", this.outputs.map(o => o.name));
+        this.logger("MidiHandler: Found Inputs:" + (this.inputs.length > 0 ? this.inputs.map(i => ` ${i.name} (ID: ${i.id}, State: ${i.state}, Connection: ${i.connection})`).join(';') : ' None')); // Use logger, format slightly differently for monitor
+        this.logger("MidiHandler: Found Outputs:" + (this.outputs.length > 0 ? this.outputs.map(o => ` ${o.name} (ID: ${o.id}, State: ${o.state}, Connection: ${o.connection})`).join(';') : ' None')); // Use logger
 
         // Deselect if selected device is no longer available
         if (this.selectedInputId && !this.inputs.find(i => i.id === this.selectedInputId)) {
-            this.selectInput(null, this.onMessageCallback); // Pass callback again on deselect?
+             this.logger(`MidiHandler: Deselecting missing input: ${this.selectedInputId}`); // Use logger
+            this.selectInput(null, this.onMessageCallback); 
         }
         if (this.selectedOutputId && !this.outputs.find(o => o.id === this.selectedOutputId)) {
+            this.logger(`MidiHandler: Deselecting missing output: ${this.selectedOutputId}`); // Use logger
             this.selectOutput(null);
         }
         
         // Trigger the UI refresh callback if it exists
         if (this.onDevicesUpdatedCallback) {
-            console.log("Triggering onDevicesUpdatedCallback");
-            this.onDevicesUpdatedCallback();
+            this.logger("MidiHandler: Triggering onDevicesUpdatedCallback..."); // Use logger
+            try { // Add try-catch around callback for safety
+                this.onDevicesUpdatedCallback();
+                this.logger("MidiHandler: onDevicesUpdatedCallback executed successfully."); // Use logger
+            } catch (callbackError) {
+                this.logger(`MidiHandler: Error executing onDevicesUpdatedCallback: ${callbackError.message}`, 'ERROR'); // Use logger
+            }
         } else {
-            console.log("No onDevicesUpdatedCallback to trigger");
+            this.logger("MidiHandler: No onDevicesUpdatedCallback registered to trigger."); // Use logger
         }
+        this.logger("--- MidiHandler: Finished updating device lists ---"); // Use logger
     }
 
     getInputDevices() {
@@ -94,7 +145,7 @@ class MidiHandler {
         // Remove listener from previously selected input
         if (this.selectedInput) {
             this.selectedInput.onmidimessage = null;
-            console.log(`Removed listener from ${this.selectedInput.name}`);
+            this.logger(`Removed listener from ${this.selectedInput.name}`); // Use logger
         }
 
         this.selectedInputId = deviceId;
@@ -102,16 +153,16 @@ class MidiHandler {
         this.onMessageCallback = onMessageCallback;
 
         if (this.selectedInput) {
-            console.log(`Selected MIDI Input: ${this.selectedInput.name} (ID: ${this.selectedInput.id})`);
+            this.logger(`Selected MIDI Input: ${this.selectedInput.name} (ID: ${this.selectedInput.id})`); // Use logger
             // Add the message listener
             this.selectedInput.onmidimessage = (event) => {
-                // console.log("MIDI Message Received:", event.data);
+                // this.logger("MIDI Message Received:", event.data); // Can be verbose
                 if (this.onMessageCallback) {
                     this.onMessageCallback(event.data); // Pass the raw Uint8Array data
                 }
             };
         } else {
-            console.log("MIDI Input Deselected.");
+            this.logger("MIDI Input Deselected."); // Use logger
             this.onMessageCallback = null;
         }
     }
@@ -124,9 +175,9 @@ class MidiHandler {
         this.selectedOutputId = deviceId;
         this.selectedOutput = this.outputs.find(o => o.id === deviceId) || null;
         if (this.selectedOutput) {
-            console.log(`Selected MIDI Output: ${this.selectedOutput.name} (ID: ${this.selectedOutput.id})`);
+            this.logger(`Selected MIDI Output: ${this.selectedOutput.name} (ID: ${this.selectedOutput.id})`); // Use logger
         } else {
-            console.log("MIDI Output Deselected.");
+            this.logger("MIDI Output Deselected."); // Use logger
         }
     }
 
@@ -138,13 +189,13 @@ class MidiHandler {
         if (this.selectedOutput && data) {
             try {
                 this.selectedOutput.send(data);
-                // console.log("MIDI Message Sent:", data);
+                // this.logger("MIDI Message Sent:", data); // Can be verbose
             } catch (error) {
-                console.error("Error sending MIDI message:", error, "Data:", data);
+                this.logger(`Error sending MIDI message: ${error.message}`, 'ERROR'); // Use logger
             }
         } else {
-             if (!this.selectedOutput) console.warn("Cannot send MIDI message: No output selected.");
-             // else console.warn("Cannot send MIDI message: No data provided.");
+             if (!this.selectedOutput) this.logger("Cannot send MIDI message: No output selected.", 'WARN'); // Use logger
+             // else this.logger("Cannot send MIDI message: No data provided.", 'WARN');
         }
     }
 

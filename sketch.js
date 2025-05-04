@@ -22,10 +22,39 @@ const APP_VERSION = "0.3";
 // MIDI Log State
 const MAX_MIDI_LOG_LINES = 15; 
 let midiLogMessages = []; 
+// NEW: General Log State
+const MAX_MONITOR_LOG_LINES = 30; // Allow more lines for general logs
+let monitorLogMessages = [];
+
+// NEW: Logging function for MIDI Monitor
+function logToMonitor(message, level = 'INFO') {
+    if (!midiMonitorDiv) return; // Cannot log if div isn't ready
+
+    const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+    let prefix = '';
+    if (level === 'WARN') prefix = '[WARN] ';
+    else if (level === 'ERROR') prefix = '[ERR] ';
+
+    const logEntry = `${timestamp}: ${prefix}${message}`;
+
+    monitorLogMessages.push(logEntry);
+
+    // Keep the log trimmed
+    if (monitorLogMessages.length > MAX_MONITOR_LOG_LINES) {
+        monitorLogMessages.shift(); 
+    }
+
+    // Update the div, joining with newline
+    midiMonitorDiv.html(monitorLogMessages.join('<br>'));
+    
+    // Auto-scroll to bottom
+    // Using elt property to access the underlying HTML element
+    midiMonitorDiv.elt.scrollTop = midiMonitorDiv.elt.scrollHeight; 
+}
 
 // Make setup async to await MIDI initialization
 async function setup() { 
-    console.log("Setting up Piano Helper...");
+    logToMonitor("Setting up Piano Helper..."); // Use new logger
     let canvasWidth = 720;
     let canvasHeight = 220; 
     let cnv = createCanvas(canvasWidth, canvasHeight);
@@ -59,7 +88,7 @@ async function setup() {
     const initialScaleData = musicLogic.getScale(appState.selectedRoot, appState.selectedScaleType);
     appState.currentScaleNotes = initialScaleData ? initialScaleData.notes : [];
     appState.rootMidi = initialScaleData ? initialScaleData.rootMidi : null;
-    midiHandler = new MidiHandler();
+    midiHandler = new MidiHandler(logToMonitor); // Pass logger function
     metronomeEngine = new MetronomeEngine(
         appState.metronome.bpm, 
         4, // initialBeats (not really used now)
@@ -72,7 +101,7 @@ async function setup() {
     // Initialize UI (MIDI selectors will be populated after user click)
     initializeUI();
 
-    console.log("Setup complete.");
+    logToMonitor("Setup complete."); // Use new logger
 }
 
 function draw() {
@@ -147,12 +176,15 @@ function initializeUI() {
 
     // --- MIDI Monitor --- 
     midiMonitorDiv = select('#midi-monitor');
-    midiMonitorDiv.html('Waiting for MIDI...<br>'); 
+    // Initialize with a waiting message using the new logger
+    // Clear previous messages first if any
+    monitorLogMessages = ['Waiting for MIDI initialization...'];
+    midiMonitorDiv.html(monitorLogMessages[0]);
 
     // --- Other UI (Info Display) --- 
     updateInfoDisplay(); 
 
-    console.log("UI Initialized"); 
+    logToMonitor("UI Initialized"); // Use new logger
 }
 
 // --- Metronome Control Callbacks --- 
@@ -255,43 +287,44 @@ function handleMidiOutputChange() {
  * Initializes MIDI on the first click, then refreshes the device list.
  */
 async function handleMidiConnectRefresh() {
-    console.log("Connect/Refresh MIDI button clicked.");
+    logToMonitor("Sketch: Connect/Refresh MIDI button clicked."); // Use new logger
     const controlsDiv = select('#controls'); 
     if (!controlsDiv) {
-        console.error("Could not find controls div for MIDI refresh.");
+        logToMonitor("Sketch: Could not find controls div for MIDI refresh.", 'ERROR'); // Use new logger
         return;
     }
 
     // Initialize MIDI on the first click
     if (!midiInitialized && midiHandler) {
-        console.log("Attempting first-time MIDI initialization...");
+        logToMonitor("Sketch: Attempting first-time MIDI initialization..."); // Use new logger
         try {
-            const success = await midiHandler.initialize(refreshMidiDeviceSelectorsUI);
+            logToMonitor("Sketch: Calling midiHandler.initialize(), passing refreshMidiDeviceSelectorsUI as callback."); // Use new logger
+            const success = await midiHandler.initialize(refreshMidiDeviceSelectorsUI); // Pass the callback
             if (success) {
-                console.log("MIDI Initialized successfully via button press.");
+                logToMonitor("Sketch: MIDI Initialized successfully via button press. midiInitialized set to true."); // Use new logger
                 midiInitialized = true; 
-                // Initial population happens via the callback passed to initialize
+                // Note: Initial population happens via the callback passed to initialize
             } else {
-                console.error("MIDI Initialization failed via button press.");
-                // Optionally provide feedback to the user here
-                alert("Could not connect to MIDI. Please ensure your device is connected and permissions are granted.");
+                logToMonitor("Sketch: MIDI Initialization failed via button press (initialize returned false).", 'ERROR'); // Use new logger
+                // alert handled in midiHandler
                 return; // Stop if initialization failed
             }
         } catch (error) {
-            console.error("Error during MIDI initialization:", error);
-            alert(`Error connecting to MIDI: ${error.message}`);
+            logToMonitor(`Sketch: Error during midiHandler.initialize call: ${error.message}`, 'ERROR'); // Use new logger
+            // alert handled in midiHandler
             return; // Stop on error
         }
     } else if (midiInitialized && midiHandler) {
         // If already initialized, just update the device lists and recreate selectors
-        console.log("Refreshing MIDI device selectors UI...");
-        midiHandler.updateDeviceLists(); // Explicitly update lists first
-        // The callback in updateDeviceLists should trigger the UI refresh,
-        // but we call it explicitly here too for robustness / if callback wasn't set correctly initially
-        refreshMidiDeviceSelectorsUI(); 
+        logToMonitor("Sketch: MIDI already initialized. Calling midiHandler.updateDeviceLists() to refresh..."); // Use new logger
+        midiHandler.updateDeviceLists(); // Explicitly update lists
+        // The callback in updateDeviceLists should trigger the UI refresh
+        // logToMonitor("Sketch: Explicitly calling refreshMidiDeviceSelectorsUI() after updateDeviceLists() (for robustness).");
+        // refreshMidiDeviceSelectorsUI(); // Maybe remove this explicit call if callback proves reliable?
     } else {
-         console.warn("MidiHandler not available or already initialized state unclear.");
+         logToMonitor("Sketch: MidiHandler not available or midiInitialized state unclear.", 'WARN'); // Use new logger
     }
+    logToMonitor("Sketch: handleMidiConnectRefresh() finished."); // Use new logger
 }
 
 /**
@@ -299,47 +332,62 @@ async function handleMidiConnectRefresh() {
  * Also updates the MIDI monitor div with detected device names.
  */
 function refreshMidiDeviceSelectorsUI() {
-    console.log("Refreshing MIDI Device Selectors UI...");
-    if (!midiHandler || !midiInputSelect || !midiOutputSelect) {
-        console.warn("MIDI handler or selectors not ready for refresh.");
+    logToMonitor("Sketch: refreshMidiDeviceSelectorsUI() callback called."); // Use new logger
+    if (!midiHandler) {
+        logToMonitor("Sketch: refreshMidiDeviceSelectorsUI called but midiHandler is not ready.", 'WARN'); // Use new logger
         return;
     }
+    // Removed redundant selector check, createMidiDeviceSelectors handles it
     const controlsDiv = select('#controls');
     if (!controlsDiv) {
-        console.error("Controls div not found for refreshing selectors!");
+        logToMonitor("Sketch: Controls div not found for refreshing selectors!", 'ERROR'); // Use new logger
         return;
     }
 
-    // Update dropdowns
+    logToMonitor("Sketch: Calling createMidiDeviceSelectors()..."); // Use new logger
     createMidiDeviceSelectors(controlsDiv); 
+    logToMonitor("Sketch: Finished createMidiDeviceSelectors()."); // Use new logger
 
     // --- Update MIDI Monitor Div ---
-    if (midiMonitorDiv) {
+    logToMonitor("Sketch: Updating MIDI Monitor Div (listing devices)..."); // Use new logger
+    if (midiMonitorDiv) { // Check midiMonitorDiv again, although it should exist if logToMonitor worked
         const inputs = midiHandler.getInputDevices();
         const outputs = midiHandler.getOutputDevices();
+        logToMonitor(`Sketch: Got ${inputs.length} inputs and ${outputs.length} outputs from midiHandler for monitor.`); // Use new logger
         let monitorHTML = "<b>Detected MIDI Devices:</b><br>";
         monitorHTML += "Inputs: " + (inputs.length > 0 ? inputs.map(i => i.name).join(', ') : 'None') + "<br>";
         monitorHTML += "Outputs: " + (outputs.length > 0 ? outputs.map(o => o.name).join(', ') : 'None') + "<br>";
-        midiMonitorDiv.html(monitorHTML);
+        // Prepend this device list to the *existing* logs, rather than replacing them
+        monitorLogMessages.unshift(monitorHTML + "---------------------"); // Add separator
+        // Trim again if adding this made it too long
+        while (monitorLogMessages.length > MAX_MONITOR_LOG_LINES) {
+             monitorLogMessages.pop(); // Remove from the end (oldest general logs)
+        }
+        midiMonitorDiv.html(monitorLogMessages.join('<br>'));
+        midiMonitorDiv.elt.scrollTop = 0; // Scroll to top to show latest device list
+        logToMonitor("Sketch: Updated MIDI Monitor Div HTML with device list."); // Use new logger
     } else {
-        console.warn("MIDI Monitor div not found for update.");
+        // If midiMonitorDiv is null here, we can't log to it. Fallback to console.
+        console.warn("Sketch: MIDI Monitor div not found for device list update."); 
     }
+    logToMonitor("Sketch: refreshMidiDeviceSelectorsUI() finished."); // Use new logger
 }
 
 // --- MIDI Message Logging --- 
 /**
  * Handles raw incoming MIDI data, formats it, and logs it.
+ * NOTE: This still uses the separate midiLogMessages array and specific formatting.
  * @param {Uint8Array} data - Raw MIDI message data.
  */
 function handleIncomingMidi(data) {
     if (!data || data.length === 0) {
-        console.log("handleIncomingMidi called with empty data.");
+        logToMonitor("Sketch: handleIncomingMidi called with empty data.", 'WARN');
         return;
     };
 
-    // Log the raw data received
+    // Log the raw data received to the main monitor too
     const rawBytesString = Array.from(data).map(byte => byte.toString(16).padStart(2, '0').toUpperCase()).join(' ');
-    console.log(`--- MIDI Received Raw: ${rawBytesString} ---`);
+    logToMonitor(`MIDI Received Raw: ${rawBytesString}`);
 
     const statusByte = data[0];
     const command = statusByte >> 4; // Get the command nybble
@@ -347,62 +395,63 @@ function handleIncomingMidi(data) {
     const data1 = data.length > 1 ? data[1] : null; // Note or Controller Number
     const data2 = data.length > 2 ? data[2] : 0;    // Velocity or Controller Value
 
-    console.log(`Parsed -> Status: 0x${statusByte.toString(16)}, Command: ${command}, Channel: ${channel}, Data1: ${data1}, Data2: ${data2}`);
+    // logToMonitor(`Parsed -> Status: 0x${statusByte.toString(16)}, Command: ${command}, Channel: ${channel}, Data1: ${data1}, Data2: ${data2}`); // Optional: Log parsed values too
 
     let messageString = '';
 
     try { // Add try-catch for safety during parsing
         // Note On (Command 9) - velocity > 0
         if (command === 9 && data2 > 0) {
-            console.log("Branch: Note On");
+            // logToMonitor("Branch: Note On"); // Less verbose logging
             const noteName = musicLogic ? musicLogic.midiToNoteName(data1) : `Note ${data1}`;
             messageString = `Note On  (Ch ${channel}): ${noteName} Vel: ${data2}`;
         }
         // Note Off (Command 8 or Command 9 with velocity 0)
         else if (command === 8 || (command === 9 && data2 === 0)) {
-            console.log("Branch: Note Off");
+            // logToMonitor("Branch: Note Off");
             const noteName = musicLogic ? musicLogic.midiToNoteName(data1) : `Note ${data1}`;
             messageString = `Note Off (Ch ${channel}): ${noteName} Vel: ${data2}`;
         }
         // Control Change (Command B = 11 decimal)
         else if (command === 11) { 
-            console.log("Branch: Control Change");
+            // logToMonitor("Branch: Control Change");
             messageString = `CC       (Ch ${channel}): Ctrl ${data1} Val: ${data2}`;
         } 
         // Pitch Bend (Command E = 14 decimal)
         else if (command === 14) {
-            console.log("Branch: Pitch Bend");
+            // logToMonitor("Branch: Pitch Bend");
             const pitchValue = (data2 << 7) | data1; // LSB is data1, MSB is data2
             messageString = `Pitch Bend (Ch ${channel}): Val ${pitchValue}`;
         }
         // Polyphonic Aftertouch / Key Pressure (Command A = 10 decimal)
         else if (command === 10) { 
-            console.log("Branch: Poly Aftertouch");
+            // logToMonitor("Branch: Poly Aftertouch");
             const noteName = musicLogic ? musicLogic.midiToNoteName(data1) : `Note ${data1}`;
             const pressureValue = data2;
             messageString = `Poly AT  (Ch ${channel}): ${noteName} Pressure: ${pressureValue}`;
         }
         // Channel Pressure / Channel Aftertouch (Command D = 13 decimal)
         else if (command === 13) { 
-            console.log("Branch: Channel Aftertouch");
+            // logToMonitor("Branch: Channel Aftertouch");
             const pressureValue = data1; // Only one data byte for channel pressure
             messageString = `Channel AT (Ch ${channel}): Pressure: ${pressureValue}`;
         }
         // Other common messages can be added here (Program Change, etc.)
         else {
-            console.log("Branch: Fallback to RAW");
+            // logToMonitor("Branch: Fallback to RAW");
             messageString = `[RAW] ${rawBytesString}`;
         }
     } catch (e) {
-        console.error("Error during MIDI parsing logic:", e);
+        logToMonitor(`Error during MIDI parsing logic: ${e.message}`, 'ERROR');
         messageString = `[ERROR PARSING] ${rawBytesString}`;
     }
 
-    logMidiMessage(messageString);
+    logMidiMessage(messageString); // Keep using the dedicated MIDI message logger
 }
 
 /**
  * Logs a formatted MIDI message string to the monitor div.
+ * Keeps separate formatting and potentially different limits.
  * @param {string} messageString - The formatted MIDI message string.
  */
 function logMidiMessage(messageString) {
@@ -417,7 +466,22 @@ function logMidiMessage(messageString) {
         midiLogMessages.shift(); 
     }
 
-    midiMonitorDiv.html(midiLogMessages.join('<br>'));
+    // Combine general logs and MIDI logs for display
+    const combinedLogs = [...monitorLogMessages, "--- MIDI Messages ---", ...midiLogMessages];
+    // Trim combined if necessary (though less likely now with separate limits)
+    while (combinedLogs.length > MAX_MONITOR_LOG_LINES + MAX_MIDI_LOG_LINES + 1) {
+        // Remove oldest general log if combined is too long
+        if (monitorLogMessages.length > 0) {
+            monitorLogMessages.shift();
+            combinedLogs.shift(); // Remove from combined view too
+        } else if (midiLogMessages.length > 0) {
+            // Or remove oldest midi log if no general logs left
+            midiLogMessages.shift();
+            combinedLogs.splice(monitorLogMessages.length + 1, 1); // Remove from combined
+        }
+    }
+
+    midiMonitorDiv.html(combinedLogs.join('<br>'));
     midiMonitorDiv.elt.scrollTop = midiMonitorDiv.elt.scrollHeight;
 }
 
