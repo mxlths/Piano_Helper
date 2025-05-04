@@ -58,7 +58,7 @@ function useMidi() {
         log(`Selected output ${selectedOutputId} disconnected. Deselecting.`, 'WARN');
         selectOutput(null); // Call selectOutput to handle deselection logic
     }
-  }, [log, selectedInputId, selectedOutputId]);
+  }, [log]);
 
   // Effect for initializing WebMidi
   useEffect(() => {
