@@ -85,15 +85,19 @@ function useMidi() {
         }
       }, { sysex: false }); // Start with sysex: false for broader compatibility
     }
-    // Cleanup function (optional, but good practice)
+  }, [isInitialized, log, updateDeviceLists]); // Depend on isInitialized to prevent re-running if already enabled
+
+  // NEW Effect for cleanup on unmount only
+  useEffect(() => {
+    // Return the cleanup function
     return () => {
       if (WebMidi.enabled) {
-        log('Disabling WebMidi...');
+        log('Disabling WebMidi on component unmount...');
         WebMidi.disable();
-        setIsInitialized(false);
+        // setIsInitialized(false); // Avoid setting state during unmount cleanup
       }
     };
-  }, [isInitialized, log, updateDeviceLists]); // Depend on isInitialized to prevent re-running if already enabled
+  }, []); // Empty dependency array ensures this runs only on mount and cleans up on unmount
 
   // Effect for handling device connection/disconnection listeners
   useEffect(() => {
