@@ -186,6 +186,10 @@ function useMidi() {
 
     // Add listener to new input
     if (id) {
+      // Log available inputs right before trying to get by ID
+      const availableInputIds = WebMidi.inputs.map(i => i.id);
+      log(`Trying to find input ID: ${id}. Available input IDs: [${availableInputIds.join(', ')}]`);
+
       const inputDevice = WebMidi.getInputById(id);
       if (inputDevice) {
         log(`Adding listener to new input: ${inputDevice.name}`);
