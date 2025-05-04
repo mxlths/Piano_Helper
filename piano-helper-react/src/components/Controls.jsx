@@ -1,6 +1,12 @@
 import React from 'react';
+import { Note } from '@tonaljs/tonal'; // Import for getting degree names
 
 function Controls({ 
+  // Mode
+  modes,
+  currentMode,
+  onModeChange,
+
   // Root/Scale/Chord Props
   rootNotes,
   octaves,
@@ -10,11 +16,22 @@ function Controls({
   selectedOctave,
   selectedScaleType,
   selectedChordType,
-  currentMode,
   onRootChange,
   onOctaveChange,
   onScaleChange,
   onChordChange,
+
+  // Diatonic Chord Mode Props
+  diatonicChordNames,
+  selectedDiatonicDegree,
+  showSevenths,
+  splitHandVoicing,
+  rhInversion,
+  inversions,
+  onDiatonicDegreeChange,
+  onShowSeventhsChange,
+  onSplitHandVoicingChange,
+  onRhInversionChange,
 
   // MIDI Props
   midiInputs = [], 
@@ -37,20 +54,46 @@ function Controls({
 }) {
 
   console.log('Controls.jsx - Received rootNotes prop:', rootNotes);
+  //console.log('Controls.jsx - Diatonic Chords:', diatonicChordNames);
 
   const handleInputChange = (event) => {
-    onSelectInput(event.target.value || null); // Pass null if default option selected
+    onSelectInput(event.target.value || null);
   };
 
   const handleOutputChange = (event) => {
-    onSelectOutput(event.target.value || null); // Pass null if default option selected
+    onSelectOutput(event.target.value || null);
+  };
+
+  // Helper to get Roman Numeral (basic)
+  const getRomanNumeral = (degree) => {
+      const numerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+      return numerals[degree] || '?';
+  };
+
+  // Helper to determine quality for button styling (simplified)
+  const getChordQuality = (chordName) => {
+      if (!chordName) return '';
+      if (chordName.includes('m') && !chordName.includes('maj')) return 'minor';
+      if (chordName.includes('dim')) return 'diminished';
+      if (chordName.includes('aug')) return 'augmented';
+      return 'major';
   };
 
   return (
     <div style={{ border: '1px solid blue', padding: '10px', marginBottom: '10px' }}>
       <h2>Controls</h2>
 
-      {/* --- Root / Scale / Chord Selection --- */}
+      {/* --- Mode Selection --- */}
+       <div style={{ marginBottom: '15px' }}>
+        <label htmlFor="mode-select">Mode: </label>
+        <select id="mode-select" value={currentMode} onChange={(e) => onModeChange(e.target.value)}>
+          {modes && modes.map(mode => (
+            <option key={mode.value} value={mode.value}>{mode.label}</option>
+          ))}
+        </select>
+       </div>
+
+      {/* --- Root & Scale Selection (Always Visible) --- */}
       <div style={{ marginBottom: '10px' }}>
         <label>Root: </label>
         <select value={selectedRootNote} onChange={(e) => onRootChange(e.target.value)}>
@@ -60,35 +103,105 @@ function Controls({
         </select>
         <label style={{ marginLeft: '10px' }}>Octave: </label>
         <select value={selectedOctave} onChange={(e) => onOctaveChange(e.target.value)}>
-          {Array.isArray(octaves) && octaves.map(oct => (
+           {Array.isArray(octaves) && octaves.map(oct => (
             <option key={oct} value={oct}>{oct}</option>
-          ))}
+           ))}
         </select>
       </div>
 
       <div style={{ marginBottom: '10px' }}>
         <label>Scale: </label>
         <select value={selectedScaleType} onChange={(e) => onScaleChange(e.target.value)}>
-          {Array.isArray(scaleTypes) && scaleTypes.map(scale => (
-            <option key={scale} value={scale}>{scale}</option>
-          ))}
-        </select>
-         <span style={{ marginLeft: '5px', color: currentMode === 'scale_display' ? 'blue' : 'grey' }}>
-          (Active)
-        </span>
-      </div>
-      
-      <div style={{ marginBottom: '15px' }}>
-         <label>Chord: </label>
-         <select value={selectedChordType} onChange={(e) => onChordChange(e.target.value)}>
-           {Array.isArray(chordTypes) && chordTypes.map(chord => (
-             <option key={chord} value={chord}>{chord}</option>
+           {Array.isArray(scaleTypes) && scaleTypes.map(scale => (
+             <option key={scale} value={scale}>{scale}</option>
            ))}
          </select>
-          <span style={{ marginLeft: '5px', color: currentMode === 'chord_display' ? 'blue' : 'grey' }}>
-            (Active)
-          </span>
-       </div>
+      </div>
+
+      {/* --- Chord Search (Only for 'chord_search' mode) --- */}
+      {currentMode === 'chord_search' && (
+          <div style={{ marginBottom: '15px', borderLeft: '3px solid lightgrey', paddingLeft: '10px' }}>
+             <label>Chord Type: </label>
+             <select value={selectedChordType} onChange={(e) => onChordChange(e.target.value)}>
+                {Array.isArray(chordTypes) && chordTypes.map(chord => (
+                 <option key={chord} value={chord}>{chord}</option>
+                ))}
+             </select>
+           </div>
+      )}
+
+      {/* --- Diatonic Chord Controls (Only for 'diatonic_chords' mode) --- */}
+      {currentMode === 'diatonic_chords' && (
+        <div style={{ marginTop: '10px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+          <h4>Diatonic Chords</h4>
+          <div style={{ marginBottom: '10px', display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+            {Array.isArray(diatonicChordNames) && diatonicChordNames.map((chordName, index) => {
+                const quality = getChordQuality(chordName);
+                const roman = getRomanNumeral(index);
+                // Basic styling based on quality
+                let qualityStyle = {};
+                if (quality === 'minor') qualityStyle.fontWeight = 'normal';
+                if (quality === 'diminished') qualityStyle.opacity = 0.7;
+                
+                const buttonText = `${quality === 'minor' ? roman.toLowerCase() : roman}${quality === 'diminished' ? '°' : ''}`;
+                const isActive = index === selectedDiatonicDegree;
+
+                return (
+                    <button 
+                        key={index} 
+                        onClick={() => onDiatonicDegreeChange(index)}
+                        style={{
+                            ...qualityStyle,
+                            border: isActive ? '2px solid blue' : '1px solid grey',
+                            padding: '5px 8px',
+                        }}
+                        title={chordName || 'N/A'} // Show full name on hover
+                    >
+                        {buttonText} ({chordName || '?'})
+                    </button>
+                )
+             })}
+          </div>
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap'}}>
+              <div>
+                  <input 
+                      type="checkbox" 
+                      id="show-sevenths" 
+                      checked={showSevenths} 
+                      onChange={onShowSeventhsChange}
+                  />
+                  <label htmlFor="show-sevenths"> Show 7ths</label>
+              </div>
+               <div>
+                  <input 
+                      type="checkbox" 
+                      id="split-hand" 
+                      checked={splitHandVoicing} 
+                      onChange={onSplitHandVoicingChange}
+                  />
+                  <label htmlFor="split-hand"> Split Hand Voicing</label>
+              </div>
+              <div>
+                  <label htmlFor="rh-inversion" style={{ marginRight: '5px' }}>RH Inversion:</label>
+                  <select 
+                      id="rh-inversion"
+                      value={rhInversion}
+                      onChange={(e) => onRhInversionChange(e.target.value)}
+                  >
+                      {inversions && inversions.map(inv => (
+                          <option 
+                            key={inv.value} 
+                            value={inv.value}
+                            disabled={inv.value === 3 && !showSevenths} // Disable 3rd inv if not 7ths
+                          >
+                              {inv.label}
+                          </option>
+                      ))}
+                  </select>
+              </div>
+          </div>
+        </div>
+      )}
 
       {/* --- MIDI Device Selection --- */}
       <div style={{ marginBottom: '10px' }}>
