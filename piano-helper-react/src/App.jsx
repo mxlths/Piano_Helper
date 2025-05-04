@@ -10,7 +10,8 @@ import { Scale, Note, Chord, ScaleType, ChordType, PcSet } from "@tonaljs/tonal"
 console.log("Tonal PcSet object:", PcSet); // <-- Add log for PcSet object
 
 // --- Constants for Dropdowns ---
-const ROOT_NOTES = PcSet.chroma(); // ["C", "C#", "D", ...]
+// const ROOT_NOTES = PcSet.chroma(); // ["C", "C#", "D", ...] // TEMP: PcSet.chroma() returning '000000000000'
+const ROOT_NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]; // <-- Hardcoded workaround
 const OCTAVES = [2, 3, 4, 5]; // Example octave range
 const SCALE_TYPES = ScaleType.names();
 const CHORD_TYPES = ChordType.names(); // Could filter this later for common chords
