@@ -17,7 +17,7 @@ let midiRefreshButton; // Refresh button
 let midiInitialized = false; // Flag to track MIDI initialization status
 
 // App Version
-const APP_VERSION = "0.0.2";
+const APP_VERSION = "0.3";
 
 // MIDI Log State
 const MAX_MIDI_LOG_LINES = 15; 
@@ -106,12 +106,6 @@ function draw() {
 function initializeUI() {
     const controlsDiv = select('#controls');
     controlsDiv.html(''); 
-
-    // --- Version Display ---
-    const versionDiv = select('#version-display');
-    if (versionDiv) {
-        versionDiv.html(`v${APP_VERSION}`);
-    }
 
     // --- Metronome Controls --- 
     // Start/Stop Button
