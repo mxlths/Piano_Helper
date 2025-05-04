@@ -301,16 +301,34 @@ async function handleMidiConnectRefresh() {
 }
 
 /**
- * (Callback function) Refreshes the MIDI device dropdowns in the UI.
- * This is called by midiHandler.initialize() or midiHandler.updateDeviceLists().
+ * Refreshes the MIDI input/output dropdown selectors in the UI.
+ * Also updates the MIDI monitor div with detected device names.
  */
 function refreshMidiDeviceSelectorsUI() {
-    console.log("Executing UI refresh callback: refreshMidiDeviceSelectorsUI");
-    const controlsDiv = select('#controls'); 
-    if (controlsDiv) {
-        createMidiDeviceSelectors(controlsDiv); // Recreate the selectors using current midiHandler data
+    console.log("Refreshing MIDI Device Selectors UI...");
+    if (!midiHandler || !midiInputSelect || !midiOutputSelect) {
+        console.warn("MIDI handler or selectors not ready for refresh.");
+        return;
+    }
+    const controlsDiv = select('#controls');
+    if (!controlsDiv) {
+        console.error("Controls div not found for refreshing selectors!");
+        return;
+    }
+
+    // Update dropdowns
+    createMidiDeviceSelectors(controlsDiv); 
+
+    // --- Update MIDI Monitor Div ---
+    if (midiMonitorDiv) {
+        const inputs = midiHandler.getInputDevices();
+        const outputs = midiHandler.getOutputDevices();
+        let monitorHTML = "<b>Detected MIDI Devices:</b><br>";
+        monitorHTML += "Inputs: " + (inputs.length > 0 ? inputs.map(i => i.name).join(', ') : 'None') + "<br>";
+        monitorHTML += "Outputs: " + (outputs.length > 0 ? outputs.map(o => o.name).join(', ') : 'None') + "<br>";
+        midiMonitorDiv.html(monitorHTML);
     } else {
-        console.error("Could not find controls div for MIDI UI refresh callback.");
+        console.warn("MIDI Monitor div not found for update.");
     }
 }
 
