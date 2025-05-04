@@ -98,8 +98,26 @@ async function setup() {
     // trackPlayer = new TrackPlayer();
     // uiManager = new UIManager();
 
-    // Initialize UI (MIDI selectors will be populated after user click)
-    initializeUI();
+    // Initialize UI (creates elements, including monitor div)
+    initializeUI(); 
+
+    // --- Attempt initial MIDI connection during setup ---
+    logToMonitor("Sketch: Attempting initial MIDI connection during setup()...");
+    // We don't strictly need to await this here, 
+    // the callback will populate UI when ready.
+    // Error handling is done via alerts within midiHandler.
+    midiHandler.initialize(refreshMidiDeviceSelectorsUI).then(success => {
+        if (success) {
+            logToMonitor("Sketch: Initial MIDI connection attempt successful (or already enabled).");
+            midiInitialized = true; // Set flag after first successful attempt
+        } else {
+             logToMonitor("Sketch: Initial MIDI connection attempt failed.", 'ERROR');
+        }
+    }).catch(error => {
+         // Should already be handled by alerts in midiHandler, but log just in case
+         logToMonitor(`Sketch: Error during initial midiHandler.initialize: ${error}`, 'ERROR');
+    });
+    // -----------------------------------------------------
 
     logToMonitor("Setup complete."); // Use new logger
 }
@@ -284,49 +302,41 @@ function handleMidiOutputChange() {
 
 /** 
  * Handles the "Connect/Refresh MIDI" button click.
- * Initializes MIDI on the first click, then refreshes the device list.
+ * After initial setup, this primarily refreshes the device list.
  */
 async function handleMidiConnectRefresh() {
     logToMonitor("Sketch: Connect/Refresh MIDI button clicked."); // Use new logger
-    const controlsDiv = select('#controls'); 
-    if (!controlsDiv) {
-        logToMonitor("Sketch: Could not find controls div for MIDI refresh.", 'ERROR'); // Use new logger
+
+    if (!midiHandler) {
+        logToMonitor("Sketch: MidiHandler not available.", 'ERROR');
         return;
     }
 
-    // Initialize MIDI on the first click
-    if (!midiInitialized && midiHandler) {
-        logToMonitor("Sketch: Attempting first-time MIDI initialization..."); // Use new logger
+    // If for some reason initialization didn't happen or failed during setup,
+    // try again on button click.
+    if (!midiInitialized) {
+        logToMonitor("Sketch: MIDI not initialized yet, attempting initialization via button...");
         try {
-            logToMonitor("Sketch: Calling midiHandler.initialize(), passing refreshMidiDeviceSelectorsUI as callback."); // Use new logger
-            const success = await midiHandler.initialize(refreshMidiDeviceSelectorsUI); // Pass the callback
+            const success = await midiHandler.initialize(refreshMidiDeviceSelectorsUI); 
             if (success) {
-                logToMonitor("Sketch: MIDI Initialized successfully via button press. midiInitialized set to true."); // Use new logger
+                logToMonitor("Sketch: MIDI initialized successfully via button.");
                 midiInitialized = true; 
-                // Note: Initial population should happen via onstatechange OR the explicit call below.
-                logToMonitor("Sketch: Explicitly calling updateDeviceLists() after successful initialize...");
-                midiHandler.updateDeviceLists(); // Call update explicitly after first init
+                // updateDeviceLists is called within initialize on success
             } else {
-                logToMonitor("Sketch: MIDI Initialization failed via button press (initialize returned false).", 'ERROR'); // Use new logger
-                // alert handled in midiHandler
-                return; // Stop if initialization failed
+                logToMonitor("Sketch: MIDI initialization failed via button.", 'ERROR');
+                return; 
             }
         } catch (error) {
-            logToMonitor(`Sketch: Error during midiHandler.initialize call: ${error.message}`, 'ERROR'); // Use new logger
-            // alert handled in midiHandler
-            return; // Stop on error
+            logToMonitor(`Sketch: Error during button MIDI initialization: ${error}`, 'ERROR');
+            return; 
         }
-    } else if (midiInitialized && midiHandler) {
-        // If already initialized, just update the device lists and recreate selectors
-        logToMonitor("Sketch: MIDI already initialized. Calling midiHandler.updateDeviceLists() to refresh..."); // Use new logger
-        midiHandler.updateDeviceLists(); // Explicitly update lists
-        // The callback in updateDeviceLists should trigger the UI refresh
-        // logToMonitor("Sketch: Explicitly calling refreshMidiDeviceSelectorsUI() after updateDeviceLists() (for robustness).");
-        // refreshMidiDeviceSelectorsUI(); // Maybe remove this explicit call if callback proves reliable?
     } else {
-         logToMonitor("Sketch: MidiHandler not available or midiInitialized state unclear.", 'WARN'); // Use new logger
+         // If already initialized, just update the device lists 
+        logToMonitor("Sketch: MIDI already initialized. Calling midiHandler.updateDeviceLists() to refresh..."); 
+        midiHandler.updateDeviceLists(); // Explicitly update lists
     }
-    logToMonitor("Sketch: handleMidiConnectRefresh() finished."); // Use new logger
+
+    logToMonitor("Sketch: handleMidiConnectRefresh() finished."); 
 }
 
 /**
