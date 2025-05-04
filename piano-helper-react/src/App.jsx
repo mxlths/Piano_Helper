@@ -113,14 +113,12 @@ function App() {
         // Determine the actual chord name (triad or seventh)
         let targetChordName = baseChordName;
         if (showSevenths) {
-            // Construct the 7th chord name. Tonal expects scale name for modeChords
-            const seventhChords = Scale.modeChords(scaleName); 
+            // Construct the 7th chord name. Use Scale.seventhChords()
+            const seventhChords = Scale.seventhChords(scaleName); // <-- Correct function name
             if (Array.isArray(seventhChords) && seventhChords[degreeIndex]) {
                 targetChordName = seventhChords[degreeIndex];
             } else {
-                 // Fallback or error handling if 7th chord name not found
-                 console.warn(`Could not determine 7th chord for degree ${degreeIndex} of ${scaleName}`);
-                 // Optionally fall back to triad?
+                 console.warn(`Could not determine 7th chord for degree ${degreeIndex} of ${scaleName}. Using triad.`);
             }
         }
         

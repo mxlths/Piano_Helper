@@ -59,7 +59,8 @@ function InfoDisplay({
         }
         
         if (showSevenths) {
-             const seventhChords = Scale.modeChords(scaleName);
+             // Use Scale.seventhChords()
+             const seventhChords = Scale.seventhChords(scaleName); // <-- Correct function name
              // Check if seventhChords is valid and has the expected chord
              if (Array.isArray(seventhChords) && seventhChords[degreeIndex]) {
                  targetChordName = seventhChords[degreeIndex];
