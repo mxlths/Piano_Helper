@@ -229,38 +229,22 @@ function useMidi() {
       // Log available inputs right before trying to get by ID
       const availableInputIds = WebMidi.inputs ? WebMidi.inputs.map(i => i.id) : [];
       log(`Trying to find input ID: ${id}. Available input IDs: [${availableInputIds.join(', ')}]`);
-      // Log the full inputs array structure to the on-screen logger
-      try {
-          log(`WebMidi.inputs before find: ${JSON.stringify(WebMidi.inputs)}`);
-      } catch (error) {
-          log('WebMidi.inputs could not be stringified.', 'WARN');
-      }
       
-      // If inputs array looks okay, try finding immediately first
+      // Simplify: ONLY use .find() to locate the device
       let inputDevice = null;
       if (WebMidi.inputs && WebMidi.inputs.length > 0) {
+          log(`Attempting to find input via WebMidi.inputs.find()...`);
           inputDevice = WebMidi.inputs.find(input => input.id === id);
       }
 
       if (inputDevice) {
-        log(`Found device immediately via .find(): ${inputDevice.name}`);
+        log(`Found device immediately via .find(): ${inputDevice.name} (ID: ${inputDevice.id})`);
         log(`Adding listener to new input: ${inputDevice.name}`);
         inputDevice.addListener('midimessage', 'all', handleIncomingMidiMessage);
         selectedInputRef.current = inputDevice; // Store reference
       } else {
-        // If not found immediately (or inputs was empty), try getInputById after a tiny delay
-        log(`Device not found immediately with .find(). Trying getInputById after 100ms delay...`);
-        setTimeout(() => {
-            const delayedInputDevice = WebMidi.getInputById(id);
-            if (delayedInputDevice) {
-                log(`Found device via getInputById after delay: ${delayedInputDevice.name}`);
-                log(`Adding listener to new input: ${delayedInputDevice.name}`);
-                delayedInputDevice.addListener('midimessage', 'all', handleIncomingMidiMessage);
-                selectedInputRef.current = delayedInputDevice; // Store reference
-            } else {
-                log(`Could not find input device with ID: ${id} even after delay.`, 'ERROR');
-            }
-        }, 100); // Increased delay to 100ms 
+        // If find failed
+        log(`Could not find input device with ID: ${id} using .find().`, 'ERROR');
       }
     } else {
         log("Input deselected.");
