@@ -7,6 +7,8 @@ import useMidi from './hooks/useMidi'; // Import the custom hook
 import useMetronome from './hooks/useMetronome.js'; // Import the metronome hook
 import { Scale, Note, Chord, ScaleType, ChordType, PcSet } from "@tonaljs/tonal"; // Import Tonal functions
 
+console.log("Tonal PcSet object:", PcSet); // <-- Add log for PcSet object
+
 // --- Constants for Dropdowns ---
 const ROOT_NOTES = PcSet.chroma(); // ["C", "C#", "D", ...]
 const OCTAVES = [2, 3, 4, 5]; // Example octave range

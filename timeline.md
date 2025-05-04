@@ -46,9 +46,9 @@
 *   [ ] Implement metronome controls in `Controls` component.
     *   [ ] Add Start/Stop button, Tempo input, Accent select dropdown.
     *   [ ] Connect controls to the `useMetronome` hook functions/state via `App.jsx`.
-*   [ ] Add MIDI output functionality to the metronome.
-    *   [ ] In `useMetronome`, call the `sendMessage` function from the `useMidi` hook on each tick/beat.
-    *   [ ] Send appropriate MIDI clock messages or Note On/Off messages based on settings.
+*   [x] Add MIDI output functionality to the metronome.
+    *   [x] In `useMetronome`, call the `sendMessage` function from the `useMidi` hook on each tick/beat.
+    *   [x] Send appropriate MIDI clock messages or Note On/Off messages based on settings.
 
 **Phase 5: Interactive MIDI Input (Original Design)**
 
