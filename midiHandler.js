@@ -28,8 +28,8 @@ class MidiHandler {
         this.onDevicesUpdatedCallback = devicesUpdatedCallback; // Store callback
 
         try {
-            this.midiAccess = await navigator.requestMIDIAccess({ sysex: false }); // sysex: false for security
-            console.log("MIDI Access Granted:", this.midiAccess);
+            this.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+            console.log("MIDI Access Granted (with SysEx requested):", this.midiAccess);
 
             // Add listeners FIRST (in case state changes immediately)
             this.midiAccess.onstatechange = (event) => {
