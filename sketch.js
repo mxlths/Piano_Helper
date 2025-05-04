@@ -14,9 +14,10 @@ let startButton, tempoInput, accentSelect; // Metronome controls
 let midiMonitorDiv; // MIDI Monitor Display
 let midiInputSelect, midiOutputSelect; // Device selectors
 let midiRefreshButton; // Refresh button
+let midiInitialized = false; // Flag to track MIDI initialization status
 
 // App Version
-const APP_VERSION = "0.0.1";
+const APP_VERSION = "0.0.2";
 
 // MIDI Log State
 const MAX_MIDI_LOG_LINES = 15; 
@@ -68,10 +69,7 @@ async function setup() {
     // trackPlayer = new TrackPlayer();
     // uiManager = new UIManager();
 
-    // Initialize MIDI *AND* pass the UI refresh callback
-    await midiHandler.initialize(refreshMidiDeviceSelectorsUI);
-
-    // Initialize UI (including MIDI selectors now that devices are known)
+    // Initialize UI (MIDI selectors will be populated after user click)
     initializeUI();
 
     console.log("Setup complete.");
@@ -148,10 +146,10 @@ function initializeUI() {
     createMidiDeviceSelectors(controlsDiv); // Create the initial dropdowns
 
     // --- MIDI Refresh Button (for debugging iOS/WebMIDI Browser) ---
-    midiRefreshButton = createButton('Refresh MIDI Lists');
+    midiRefreshButton = createButton('Connect/Refresh MIDI'); // Changed button text
     midiRefreshButton.parent(controlsDiv);
     midiRefreshButton.style('margin-left', '20px');
-    midiRefreshButton.mousePressed(refreshMidiDeviceSelectorsUI);
+    midiRefreshButton.mousePressed(handleMidiConnectRefresh); // Changed handler function name
 
     // --- MIDI Monitor --- 
     midiMonitorDiv = select('#midi-monitor');
@@ -258,14 +256,61 @@ function handleMidiOutputChange() {
     // TODO: Potentially update metronome to use MIDI out if selected?
 }
 
-// Function called by the refresh button
+/** 
+ * Handles the "Connect/Refresh MIDI" button click.
+ * Initializes MIDI on the first click, then refreshes the device list.
+ */
+async function handleMidiConnectRefresh() {
+    console.log("Connect/Refresh MIDI button clicked.");
+    const controlsDiv = select('#controls'); 
+    if (!controlsDiv) {
+        console.error("Could not find controls div for MIDI refresh.");
+        return;
+    }
+
+    // Initialize MIDI on the first click
+    if (!midiInitialized && midiHandler) {
+        console.log("Attempting first-time MIDI initialization...");
+        try {
+            const success = await midiHandler.initialize(refreshMidiDeviceSelectorsUI);
+            if (success) {
+                console.log("MIDI Initialized successfully via button press.");
+                midiInitialized = true; 
+                // Initial population happens via the callback passed to initialize
+            } else {
+                console.error("MIDI Initialization failed via button press.");
+                // Optionally provide feedback to the user here
+                alert("Could not connect to MIDI. Please ensure your device is connected and permissions are granted.");
+                return; // Stop if initialization failed
+            }
+        } catch (error) {
+            console.error("Error during MIDI initialization:", error);
+            alert(`Error connecting to MIDI: ${error.message}`);
+            return; // Stop on error
+        }
+    } else if (midiInitialized && midiHandler) {
+        // If already initialized, just update the device lists and recreate selectors
+        console.log("Refreshing MIDI device selectors UI...");
+        midiHandler.updateDeviceLists(); // Explicitly update lists first
+        // The callback in updateDeviceLists should trigger the UI refresh,
+        // but we call it explicitly here too for robustness / if callback wasn't set correctly initially
+        refreshMidiDeviceSelectorsUI(); 
+    } else {
+         console.warn("MidiHandler not available or already initialized state unclear.");
+    }
+}
+
+/**
+ * (Callback function) Refreshes the MIDI device dropdowns in the UI.
+ * This is called by midiHandler.initialize() or midiHandler.updateDeviceLists().
+ */
 function refreshMidiDeviceSelectorsUI() {
-    console.log("Manually refreshing MIDI device selectors UI...");
+    console.log("Executing UI refresh callback: refreshMidiDeviceSelectorsUI");
     const controlsDiv = select('#controls'); 
     if (controlsDiv) {
-        createMidiDeviceSelectors(controlsDiv); // Recreate the selectors
+        createMidiDeviceSelectors(controlsDiv); // Recreate the selectors using current midiHandler data
     } else {
-        console.error("Could not find controls div for MIDI refresh.");
+        console.error("Could not find controls div for MIDI UI refresh callback.");
     }
 }
 
