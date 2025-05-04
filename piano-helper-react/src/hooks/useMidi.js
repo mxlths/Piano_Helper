@@ -266,6 +266,13 @@ function useMidi() {
         log("Cannot send MIDI message: No output selected.", 'WARN');
         return;
     }
+    
+    // --- DEBUG LOGS ---
+    const availableOutputIDs = WebMidi.outputs ? WebMidi.outputs.map(o => `ID: ${o.id} (Type: ${typeof o.id})`) : ['None available'];
+    log(`[sendMessage] Attempting to send. Selected Output ID: ${selectedOutputId} (Type: ${typeof selectedOutputId})`);
+    log(`[sendMessage] Available Output IDs at this moment: [${availableOutputIDs.join(', ')}]`);
+    // --- END DEBUG LOGS ---
+    
     const outputDevice = WebMidi.getOutputById(selectedOutputId);
     if (outputDevice) {
       try {
