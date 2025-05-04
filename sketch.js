@@ -270,7 +270,20 @@ function handleIncomingMidi(data) {
             const pitchValue = (data2 << 7) | data1; // LSB is data1, MSB is data2
             messageString = `Pitch Bend (Ch ${channel}): Val ${pitchValue}`;
         }
-        // Other common messages can be added here
+        // Polyphonic Aftertouch / Key Pressure (Command A = 10 decimal)
+        else if (command === 10) { 
+            console.log("Branch: Poly Aftertouch");
+            const noteName = musicLogic ? musicLogic.midiToNoteName(data1) : `Note ${data1}`;
+            const pressureValue = data2;
+            messageString = `Poly AT  (Ch ${channel}): ${noteName} Pressure: ${pressureValue}`;
+        }
+        // Channel Pressure / Channel Aftertouch (Command D = 13 decimal)
+        else if (command === 13) { 
+            console.log("Branch: Channel Aftertouch");
+            const pressureValue = data1; // Only one data byte for channel pressure
+            messageString = `Channel AT (Ch ${channel}): Pressure: ${pressureValue}`;
+        }
+        // Other common messages can be added here (Program Change, etc.)
         else {
             console.log("Branch: Fallback to RAW");
             messageString = `[RAW] ${rawBytesString}`;
