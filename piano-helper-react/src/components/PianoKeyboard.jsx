@@ -45,7 +45,7 @@ function PianoKeyboard({ rootNote, notesToHighlight = [] }) {
         const isRoot = midiNote === rootNote;
         const isHighlighted = notesToHighlight.includes(midiNote);
 
-        context.fillStyle = isRoot ? rootHighlightColor : (isHighlighted ? highlightColor : whiteKeyColor);
+        context.fillStyle = (isRoot && isHighlighted) ? rootHighlightColor : (isHighlighted ? highlightColor : whiteKeyColor);
         context.fillRect(keyX, 0, keyWidth, keyHeight);
         context.strokeStyle = keyBorderColor;
         context.strokeRect(keyX, 0, keyWidth, keyHeight);
@@ -74,7 +74,7 @@ function PianoKeyboard({ rootNote, notesToHighlight = [] }) {
            const isRoot = blackMidiNote === rootNote;
            const isHighlighted = notesToHighlight.includes(blackMidiNote);
 
-           context.fillStyle = isRoot ? rootHighlightColor : (isHighlighted ? highlightColor : blackKeyColor);
+           context.fillStyle = (isRoot && isHighlighted) ? rootHighlightColor : (isHighlighted ? highlightColor : blackKeyColor);
            context.fillRect(blackKeyX, 0, blackKeyWidth, blackKeyHeight);
            // Optionally add border to black keys
            context.strokeStyle = keyBorderColor;

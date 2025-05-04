@@ -152,8 +152,15 @@ function App() {
 
         // Apply Split Hand Voicing
         if (splitHandVoicing) {
-          const actualLhNote = chordRootMidi - 24; // 2 octaves below the chord root
-          calculatedNotes = [actualLhNote, ...midiNotes];
+          // Ensure chordRootMidi is valid before calculating LH note
+          if (chordRootMidi !== null && chordRootMidi >= 24) { // Check if MIDI is valid and high enough for LH note
+              const actualLhNote = chordRootMidi - 24; // 2 octaves below the chord root
+              // Combine LH note with RH notes (which are already calculated and possibly inverted)
+              calculatedNotes = [actualLhNote, ...midiNotes];
+          } else {
+              console.warn("Could not calculate valid LH note for split voicing.");
+              calculatedNotes = midiNotes; // Fallback to only RH notes
+          }
         } else {
           calculatedNotes = midiNotes;
         }
