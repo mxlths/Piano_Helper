@@ -118,7 +118,7 @@ function useMetronome(sendMessage) { // Accept sendMessage as a prop/argument
       }, NOTE_DURATION_MS);
     }, intervalMs);
 
-  }, [bpm, selectedSoundNote, sendMessage, stopMetronome, timeSignature]); // Removed isPlaying and currentBeat
+  }, [isPlaying, bpm, selectedSoundNote, sendMessage, stopMetronome, timeSignature]); // Added isPlaying back, kept functional beat update
 
   // Cleanup on unmount or when dependencies change that require stopping
   useEffect(() => {
@@ -148,7 +148,7 @@ function useMetronome(sendMessage) { // Accept sendMessage as a prop/argument
         startMetronome();
       }
     }
-  }, [isPlaying]);
+  }, [isPlaying, startMetronome]); // Add startMetronome back
 
   const changeSound = useCallback((soundNote) => {
      const numericNote = parseInt(soundNote, 10);
@@ -174,7 +174,7 @@ function useMetronome(sendMessage) { // Accept sendMessage as a prop/argument
       } else {
           console.warn(`Invalid time signature selected: ${newTimeSignature}`);
       }
-   }, [isPlaying, startMetronome]);
+   }, [isPlaying, startMetronome]); // Keep startMetronome here
 
 
   return {
