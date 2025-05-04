@@ -271,16 +271,23 @@ function useMidi() {
         return;
     }
 
+    // Call getOutputById only ONCE
+    const outputDevice = WebMidi.getOutputById(selectedOutputId);
+
     // --- DEBUG LOGS ---
     const availableOutputIDs = WebMidi.outputs ? WebMidi.outputs.map(o => `ID: ${o.id} (Type: ${typeof o.id}) Name: ${o.name}`) : ['None available'];
     log(`[sendMessage] Attempting to send. Selected Output ID: ${selectedOutputId} (Type: ${typeof selectedOutputId})`);
     log(`[sendMessage] Available Output IDs at this moment: [${availableOutputIDs.join(', ')}]`);
-    const outputDeviceAttempt = WebMidi.getOutputById(selectedOutputId);
-    log(`[sendMessage] Result of WebMidi.getOutputById(${selectedOutputId}): ${outputDeviceAttempt === null ? 'null' : (outputDeviceAttempt === undefined ? 'undefined' : 'Found device')}`);
+    // Log the actual result stored in the variable
+    log(`[sendMessage] Result stored in outputDevice variable: ${outputDevice ? 'Object found' : 'null/undefined/falsy'}`); 
+    try {
+        log(`[sendMessage] Stringified outputDevice before 'if': ${JSON.stringify(outputDevice)}`); // Attempt to stringify
+    } catch(e) {
+        log(`[sendMessage] Could not stringify outputDevice. Is it a valid object? Type: ${typeof outputDevice}`);
+    }
     // --- END DEBUG LOGS ---
-
-    const outputDevice = WebMidi.getOutputById(selectedOutputId); // Call again for the actual logic
-    if (outputDevice) {
+    
+    if (outputDevice) { // Use the stored result
       try {
         // Log MIDI Out data in a more readable format if possible (e.g., hex)
         const dataHex = Array.from(data).map(byte => byte.toString(16).padStart(2, '0').toUpperCase()).join(' ');
