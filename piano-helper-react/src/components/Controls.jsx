@@ -1,6 +1,22 @@
 import React from 'react';
 
 function Controls({ 
+  // Root/Scale/Chord Props
+  rootNotes,
+  octaves,
+  scaleTypes,
+  chordTypes,
+  selectedRootNote,
+  selectedOctave,
+  selectedScaleType,
+  selectedChordType,
+  currentMode,
+  onRootChange,
+  onOctaveChange,
+  onScaleChange,
+  onChordChange,
+
+  // MIDI Props
   midiInputs = [], 
   midiOutputs = [], 
   selectedInputId,
@@ -13,12 +29,11 @@ function Controls({
   metronomeBpm,
   metronomeSoundNote,
   metronomeSounds,
+  metronomeTimeSignature,
   onToggleMetronome,
   onChangeMetronomeTempo,
   onChangeMetronomeSound,
-  // Add Time Signature Props
-  metronomeTimeSignature,
-  onChangeMetronomeTimeSignature 
+  onChangeMetronomeTimeSignature,
 }) {
 
   const handleInputChange = (event) => {
@@ -30,11 +45,51 @@ function Controls({
   };
 
   return (
-    <div style={{ border: '1px solid blue', padding: '10px', margin: '10px 0' }}>
+    <div style={{ border: '1px solid blue', padding: '10px', marginBottom: '10px' }}>
       <h2>Controls</h2>
+
+      {/* --- Root / Scale / Chord Selection --- */}
+      <div style={{ marginBottom: '10px' }}>
+        <label>Root: </label>
+        <select value={selectedRootNote} onChange={(e) => onRootChange(e.target.value)}>
+          {rootNotes && rootNotes.map(note => (
+            <option key={note} value={note}>{note}</option>
+          ))}
+        </select>
+        <label style={{ marginLeft: '10px' }}>Octave: </label>
+        <select value={selectedOctave} onChange={(e) => onOctaveChange(e.target.value)}>
+          {octaves && octaves.map(oct => (
+            <option key={oct} value={oct}>{oct}</option>
+          ))}
+        </select>
+      </div>
+
+      <div style={{ marginBottom: '10px' }}>
+        <label>Scale: </label>
+        <select value={selectedScaleType} onChange={(e) => onScaleChange(e.target.value)}>
+          {scaleTypes && scaleTypes.map(scale => (
+            <option key={scale} value={scale}>{scale}</option>
+          ))}
+        </select>
+         <span style={{ marginLeft: '5px', color: currentMode === 'scale_display' ? 'blue' : 'grey' }}>
+          (Active)
+        </span>
+      </div>
       
-      {/* MIDI Device Selectors */} 
-      <div>
+      <div style={{ marginBottom: '15px' }}>
+         <label>Chord: </label>
+         <select value={selectedChordType} onChange={(e) => onChordChange(e.target.value)}>
+           {chordTypes && chordTypes.map(chord => (
+             <option key={chord} value={chord}>{chord}</option>
+           ))}
+         </select>
+          <span style={{ marginLeft: '5px', color: currentMode === 'chord_display' ? 'blue' : 'grey' }}>
+            (Active)
+          </span>
+       </div>
+
+      {/* --- MIDI Device Selection --- */}
+      <div style={{ marginBottom: '10px' }}>
         <label htmlFor="midi-input">MIDI Input: </label>
         <select 
           id="midi-input" 

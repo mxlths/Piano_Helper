@@ -21,13 +21,13 @@
 *   [x] Populate MIDI device selection dropdowns in `Controls`.
 *   [x] Handle device selection state update.
 *   [x] Implement basic incoming MIDI message logging.
-*   [ ] **(Testing Required)** Verify incoming MIDI message logging works correctly on target devices (iPad Pro WebMIDI Browser).
-*   [ ] **(To Do)** Implement MIDI Output message sending via `useMidi` hook's `sendMessage` function (required for Metronome/Tracks).
+*   [x] **(Testing Required)** Verify incoming MIDI message logging works correctly on target devices (iPad Pro WebMIDI Browser).
+*   [x] **(To Do)** Implement MIDI Output message sending via `useMidi` hook's `sendMessage` function (required for Metronome/Tracks).
 
 **Phase 3: Piano Display (React Refactor)**
 
-*   [ ] Implement canvas drawing logic within `PianoKeyboard` component using native Canvas API.
-    *   [ ] Draw basic white and black keys based on range props.
+*   [x] Implement canvas drawing logic within `PianoKeyboard` component using native Canvas API.
+    *   [x] Draw basic white and black keys based on range props.
     *   [ ] Implement logic to calculate key positions accurately.
 *   [ ] Connect `PianoKeyboard` props to application state.
     *   [ ] Calculate `notesToHighlight` array in `App.jsx` based on `selectedRoot`, `selectedScaleType`, etc. (using `MusicLogic`).
