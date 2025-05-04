@@ -271,8 +271,8 @@ function useMidi() {
         return;
     }
 
-    // Attempt to find the output device manually using .find()
-    const outputDevice = WebMidi.outputs.find(output => output.id === selectedOutputId);
+    // Attempt to find the output device manually using .find() with explicit Number conversion
+    const outputDevice = WebMidi.outputs.find(output => Number(output.id) === Number(selectedOutputId));
 
     // --- DEBUG LOGS REMOVED ---
     
