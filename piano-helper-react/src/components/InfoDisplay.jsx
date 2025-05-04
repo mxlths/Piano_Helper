@@ -11,7 +11,7 @@ function InfoDisplay({
   selectedChordType, // For chord_search mode
   currentMode, 
   // Diatonic mode props
-  diatonicChordNames,
+  diatonicChordTypes, // Renamed from diatonicChordNames
   selectedDiatonicDegree,
   showSevenths 
 }) {
@@ -46,67 +46,74 @@ function InfoDisplay({
             // Get notes based on the search type and root+octave
             midiNotes = Chord.getChord(selectedChordType, `${Note.pitchClass(selectedRoot)}${rootOctave}`).notes.map(Note.midi).filter(Boolean);
         }
-    } else if (currentMode === 'diatonic_chords' && selectedRoot && selectedScaleType && Array.isArray(diatonicChordNames) && diatonicChordNames.length > selectedDiatonicDegree) {
+    } else if (currentMode === 'diatonic_chords' && selectedRoot && selectedScaleType) {
         const scaleName = `${Note.pitchClass(selectedRoot)} ${selectedScaleType}`;
+        const scaleInfo = Scale.get(scaleName);
         const degreeIndex = selectedDiatonicDegree;
-        
-        // Determine target chord name (triad or seventh)
-        let targetChordName = (Array.isArray(diatonicChordNames) && diatonicChordNames[degreeIndex]) ? diatonicChordNames[degreeIndex] : null;
+        const rootOctave = Note.octave(selectedRoot) || 4;
 
-        if (!targetChordName) {
-           title = `Error: Base chord not found for degree ${degreeIndex + 1}`;
-           throw new Error(title); // Stop processing if base chord is missing
+        // Ensure we have intervals to calculate root
+        if (!scaleInfo || !Array.isArray(scaleInfo.intervals) || scaleInfo.intervals.length <= degreeIndex) {
+            throw new Error(`Invalid scale data or degree index for ${scaleName}`);
         }
-        
+
+        // Determine chord type (triad or seventh)
+        let chordType = null;
         if (showSevenths) {
-             // Use Scale.seventhChords()
-             const seventhChords = Scale.seventhChords(scaleName); // <-- Correct function name
-             // Check if seventhChords is valid and has the expected chord
-             if (Array.isArray(seventhChords) && seventhChords[degreeIndex]) {
-                 targetChordName = seventhChords[degreeIndex];
-             } else {
-                 console.warn(`Could not determine 7th chord for degree ${degreeIndex} of ${scaleName}. Using triad.`);
-                 // Optionally fall back to triad name already in targetChordName
+             const seventhTypes = Scale.seventhChords(scaleName);
+             if (Array.isArray(seventhTypes) && seventhTypes[degreeIndex]) {
+                 chordType = seventhTypes[degreeIndex];
+             }
+        } else {
+             // Use the passed diatonicChordTypes (triads)
+             if (Array.isArray(diatonicChordTypes) && diatonicChordTypes[degreeIndex]) {
+                  chordType = diatonicChordTypes[degreeIndex];
              }
         }
 
-        // Now, safely use targetChordName
-        console.log('InfoDisplay - targetChordName before Chord.get:', targetChordName); // <-- Add log
-        const chordData = Chord.get(targetChordName); // Get data using just the name
+        if (!chordType) {
+             throw new Error(`Could not determine chord type for degree ${degreeIndex + 1} of ${scaleName}`);
+        }
+        
+        // Determine the root note of this specific diatonic chord
+        const chordRootName = Note.transpose(Note.pitchClass(selectedRoot), scaleInfo.intervals[degreeIndex]);
+        if (!chordRootName) {
+            throw new Error(`Could not determine chord root for degree ${degreeIndex + 1}`);
+        }
+
+        // Construct the full chord name (e.g., "Dm", "G7")
+        const fullChordName = chordRootName + chordType;
+        
+        // Get data using the full chord name
+        const chordData = Chord.get(fullChordName); 
         if (chordData && Array.isArray(chordData.notes) && chordData.notes.length > 0) {
+            // Generate title with Roman numeral
             const romanNumerals = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii'];
             let roman = romanNumerals[degreeIndex] || '?';
-            if (chordData.quality === 'Major' && roman !== 'I' && roman !== 'IV' && roman !== 'V') {
-                // Adjust case based on quality if needed, basic check
-            } else if (chordData.quality === 'Minor') {
-                 roman = roman.toLowerCase();
+            if (chordData.quality === 'Minor') roman = roman.toLowerCase();
+            if (chordData.quality === 'Diminished') roman += '°';
+            if (showSevenths && chordData.type !== 'dominant seventh' && chordData.type !== 'major seventh' && chordData.type !== 'minor seventh' && chordData.type !== 'half-diminished') {
+                 // Add '7' if it's a 7th and not already implied by type (basic check)
+                 // This might need refinement based on how Tonal names chords
             }
-            if (chordData.aliases?.includes('dim') || chordData.quality === 'Diminished') {
-                 roman += '°';
-            }
-            if (showSevenths && !roman.includes('7')) roman += '7'; // Add 7 if showing sevenths
-
-            title = `${roman}: ${targetChordName} (in ${scaleName})`;
+            
+            title = `${roman}: ${fullChordName} (in ${scaleName})`;
             notes = chordData.notes; // Note names relative to chord root
             formula = chordData.intervals.join(' ');
             
-            // Calculate MIDI notes for display based on actual root and octave
-            const intervals = Scale.get(scaleName).intervals;
-            const chordRootName = Note.transpose(Note.pitchClass(selectedRoot), intervals[degreeIndex]);
-            const rootOctave = Note.octave(selectedRoot) || 4;
-            midiNotes = Chord.getChord(targetChordName, `${chordRootName}${rootOctave}`).notes.map(Note.midi).filter(Boolean);
+            // Calculate MIDI notes using full name and correct root+octave
+            midiNotes = Chord.getChord(fullChordName, `${chordRootName}${rootOctave}`).notes.map(Note.midi).filter(Boolean);
         } else {
-            title = `Error: Could not get data for chord ${targetChordName}`;
-            notes = [];
-            formula = '-';
-            midiNotes = [];
+            // Throw error if Chord.get failed, caught below
+            throw new Error(`Could not get data for chord ${fullChordName}`); 
         }
     }
   } catch (error) {
       console.error("Error in InfoDisplay:", error);
-      title = "Error processing selection";
-      notes = []; // Ensure notes is an array on error
-      midiNotes = []; // Ensure midiNotes is an array on error
+      title = error.message || "Error processing selection"; // Show specific error
+      notes = [];
+      midiNotes = [];
+      formula = '-'; // Reset formula on error
   }
 
   // Format the data for display

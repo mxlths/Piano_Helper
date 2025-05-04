@@ -71,22 +71,31 @@ function App() {
   const rootNoteMidi = useMemo(() => Note.midi(selectedRootWithOctave), [selectedRootWithOctave]);
   const scaleName = useMemo(() => `${selectedRootNote} ${selectedScaleType}`, [selectedRootNote, selectedScaleType]);
 
-  // Calculate diatonic chords based on scale (Triads first, handle 7ths later)
-  const diatonicChordNames = useMemo(() => {
+  // Calculate diatonic chord TYPES based on scale
+  const diatonicChordTypes = useMemo(() => { // Renamed from diatonicChordNames
       try {
         // Tonal expects scale name like "C major"
-        const chords = Scale.scaleChords(scaleName);
-        // const chords = Scale.modeChords(scaleName); // Use this later for sevenths?
-        return Array.isArray(chords) ? chords : [];
+        const types = Scale.scaleChords(scaleName); // Gets triad types: M, m, dim
+        return Array.isArray(types) ? types : [];
       } catch {
           return []; // Handle invalid scale name
       }
+  }, [scaleName]);
+
+  const diatonicSeventhChordTypes = useMemo(() => { // Added for 7ths
+     try {
+        const types = Scale.seventhChords(scaleName); // Gets 7th types: maj7, m7, m7b5
+        return Array.isArray(types) ? types : [];
+     } catch {
+         return [];
+     }
   }, [scaleName]);
 
   const notesToHighlight = useMemo(() => {
     let calculatedNotes = [];
     const octave = selectedOctave;
     const rootName = selectedRootNote;
+    const scaleInfo = Scale.get(scaleName); // Get scale info once
 
     try {
       if (currentMode === 'scale_display' && selectedScaleType) {
@@ -103,34 +112,29 @@ function App() {
            calculatedNotes = chordData.notes.map(Note.midi).filter(Boolean);
          }
       } else if (currentMode === 'diatonic_chords') {
-        if (diatonicChordNames.length === 0) return [];
-
-        const degreeIndex = selectedDiatonicDegree;
-        // Get the base diatonic chord name (triad)
-        let baseChordName = diatonicChordNames[degreeIndex]; 
-        if (!baseChordName) return [];
-
-        // Determine the actual chord name (triad or seventh)
-        let targetChordName = baseChordName;
-        if (showSevenths) {
-            // Construct the 7th chord name. Use Scale.seventhChords()
-            const seventhChords = Scale.seventhChords(scaleName); // <-- Correct function name
-            if (Array.isArray(seventhChords) && seventhChords[degreeIndex]) {
-                targetChordName = seventhChords[degreeIndex];
-            } else {
-                 console.warn(`Could not determine 7th chord for degree ${degreeIndex} of ${scaleName}. Using triad.`);
-            }
-        }
+        if (!Array.isArray(scaleInfo.intervals) || scaleInfo.intervals.length === 0) return []; // Need intervals
         
-        // Find the root note of this specific diatonic chord
-        const intervals = Scale.get(scaleName).intervals;
-        const chordRootName = Note.transpose(rootName, intervals[degreeIndex]);
+        const degreeIndex = selectedDiatonicDegree;
+        const chordTypes = showSevenths ? diatonicSeventhChordTypes : diatonicChordTypes;
+        
+        if (!Array.isArray(chordTypes) || chordTypes.length <= degreeIndex) return []; // Check if types array is valid
+        
+        const chordType = chordTypes[degreeIndex];
+        if (!chordType) return []; // Check if type exists for this degree
+
+        // Determine the root note of this specific diatonic chord
+        const chordRootName = Note.transpose(rootName, scaleInfo.intervals[degreeIndex]);
+        if (!chordRootName) return []; // Check if transpose worked
+        
         const chordRootWithOctave = `${chordRootName}${octave}`;
         const chordRootMidi = Note.midi(chordRootWithOctave);
-        if (!chordRootMidi) return [];
+        if (!chordRootMidi) return []; // Check if root MIDI is valid
 
-        // Get the notes of the target chord (triad or seventh) starting at the correct octave
-        const chordData = Chord.getChord(targetChordName, chordRootWithOctave);
+        // Construct the full chord name (e.g., "Dm", "G7")
+        const fullChordName = chordRootName + chordType;
+
+        // Get the notes of the target chord using the full name and root+octave
+        const chordData = Chord.getChord(fullChordName, chordRootWithOctave);
         if (!chordData || !Array.isArray(chordData.notes) || chordData.notes.length === 0) return [];
 
         let chordNotes = chordData.notes; // Note names with correct octave
@@ -171,7 +175,7 @@ function App() {
     // Filter final notes
     return calculatedNotes.filter(n => n !== null && n >= 0 && n <= 127);
 
-  }, [currentMode, selectedRootNote, selectedOctave, selectedScaleType, selectedChordType, rootNoteMidi, scaleName, diatonicChordNames, selectedDiatonicDegree, showSevenths, splitHandVoicing, rhInversion]);
+  }, [currentMode, selectedRootNote, selectedOctave, selectedScaleType, selectedChordType, rootNoteMidi, scaleName, diatonicChordTypes, diatonicSeventhChordTypes, selectedDiatonicDegree, showSevenths, splitHandVoicing, rhInversion]);
 
   // --- Event Handlers ---
   const handleModeChange = (newMode) => {
@@ -264,7 +268,7 @@ function App() {
         onChordChange={handleChordChange} // For chord_search mode
 
         // Diatonic Chord Mode Props
-        diatonicChordNames={diatonicChordNames}
+        diatonicChordTypes={diatonicChordTypes}
         selectedDiatonicDegree={selectedDiatonicDegree}
         showSevenths={showSevenths}
         splitHandVoicing={splitHandVoicing}
@@ -305,7 +309,7 @@ function App() {
         selectedScaleType={selectedScaleType}
         selectedChordType={selectedChordType}
         currentMode={currentMode}
-        diatonicChordNames={diatonicChordNames} // Pass chord names
+        diatonicChordTypes={diatonicChordTypes} // Pass chord types
         selectedDiatonicDegree={selectedDiatonicDegree} // Pass selected degree
         showSevenths={showSevenths} // Pass seventh state
       />

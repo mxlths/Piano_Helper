@@ -1,5 +1,5 @@
 import React from 'react';
-import { Note } from '@tonaljs/tonal'; // Import for getting degree names
+import { Note, Scale } from '@tonaljs/tonal'; // Import for getting degree names and scale intervals
 
 function Controls({ 
   // Mode
@@ -22,7 +22,7 @@ function Controls({
   onChordChange,
 
   // Diatonic Chord Mode Props
-  diatonicChordNames,
+  diatonicChordTypes,
   selectedDiatonicDegree,
   showSevenths,
   splitHandVoicing,
@@ -54,7 +54,7 @@ function Controls({
 }) {
 
   console.log('Controls.jsx - Received rootNotes prop:', rootNotes);
-  //console.log('Controls.jsx - Diatonic Chords:', diatonicChordNames);
+  //console.log('Controls.jsx - Diatonic Chords:', diatonicChordTypes);
 
   const handleInputChange = (event) => {
     onSelectInput(event.target.value || null);
@@ -135,8 +135,18 @@ function Controls({
         <div style={{ marginTop: '10px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
           <h4>Diatonic Chords</h4>
           <div style={{ marginBottom: '10px', display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-            {Array.isArray(diatonicChordNames) && diatonicChordNames.map((chordName, index) => {
-                const quality = getChordQuality(chordName);
+            {Array.isArray(diatonicChordTypes) && diatonicChordTypes.map((chordType, index) => {
+                // Determine the root note for this degree
+                const scaleIntervals = Scale.get(`${selectedRootNote} ${selectedScaleType}`).intervals;
+                const chordRootName = (Array.isArray(scaleIntervals) && scaleIntervals[index]) ? 
+                                        Note.transpose(selectedRootNote, scaleIntervals[index]) : '?';
+                
+                // Determine the actual type (triad/seventh) - needs seventh types passed!
+                // FOR NOW: Assume diatonicChordTypes contains correct type based on showSevenths
+                // TODO: Pass diatonicSeventhChordTypes and select based on showSevenths
+                const actualChordType = chordType; 
+                const fullChordName = chordRootName + actualChordType;
+                const quality = getChordQuality(fullChordName); // Use full name
                 const roman = getRomanNumeral(index);
                 // Basic styling based on quality
                 let qualityStyle = {};
@@ -155,9 +165,9 @@ function Controls({
                             border: isActive ? '2px solid blue' : '1px solid grey',
                             padding: '5px 8px',
                         }}
-                        title={chordName || 'N/A'} // Show full name on hover
+                        title={fullChordName || 'N/A'} // Show full name on hover
                     >
-                        {buttonText} ({chordName || '?'})
+                        {buttonText} ({fullChordName || '?'})
                     </button>
                 )
              })}
