@@ -101,23 +101,33 @@ function useMidi() {
 
   // Effect for handling device connection/disconnection listeners
   useEffect(() => {
-    if (isInitialized) {
+    // Add check for WebMidi.enabled *inside* the effect
+    // This handles cases where WebMidi might be disabled between renders (e.g., by StrictMode)
+    if (isInitialized && WebMidi.enabled) { 
         const handleDeviceChange = (e) => {
             log(`Device ${e.type}: ${e.port.name} (${e.port.type})`);
             updateDeviceLists();
         };
 
         log('Adding WebMidi connected/disconnected listeners...');
+        // It should be safe to add listeners now because we checked WebMidi.enabled
         WebMidi.addListener('connected', handleDeviceChange);
         WebMidi.addListener('disconnected', handleDeviceChange);
 
         // Cleanup listeners on component unmount or when isInitialized changes
         return () => {
             log('Removing WebMidi connected/disconnected listeners...');
-            WebMidi.removeListener('connected', handleDeviceChange);
-            WebMidi.removeListener('disconnected', handleDeviceChange);
+            // Check if WebMidi is still enabled before trying to remove listeners
+            // This might prevent errors if disable() was called externally or during unmount
+            if (WebMidi.enabled) { 
+                WebMidi.removeListener('connected', handleDeviceChange);
+                WebMidi.removeListener('disconnected', handleDeviceChange);
+            }
         };
-    } 
+    } else if (isInitialized && !WebMidi.enabled) {
+        // Log if we intended to add listeners but couldn't because WebMidi was disabled
+        log('Skipping adding listeners because WebMidi is not enabled (isInitialized is true).', 'WARN');
+    }
   }, [isInitialized, log, updateDeviceLists]); // Re-run if initialization status changes
 
   // --- Incoming Message Handler ---
