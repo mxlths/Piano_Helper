@@ -52,13 +52,13 @@ function Controls({
       <div style={{ marginBottom: '10px' }}>
         <label>Root: </label>
         <select value={selectedRootNote} onChange={(e) => onRootChange(e.target.value)}>
-          {rootNotes && rootNotes.map(note => (
+          {Array.isArray(rootNotes) && rootNotes.map(note => (
             <option key={note} value={note}>{note}</option>
           ))}
         </select>
         <label style={{ marginLeft: '10px' }}>Octave: </label>
         <select value={selectedOctave} onChange={(e) => onOctaveChange(e.target.value)}>
-          {octaves && octaves.map(oct => (
+          {Array.isArray(octaves) && octaves.map(oct => (
             <option key={oct} value={oct}>{oct}</option>
           ))}
         </select>
@@ -67,7 +67,7 @@ function Controls({
       <div style={{ marginBottom: '10px' }}>
         <label>Scale: </label>
         <select value={selectedScaleType} onChange={(e) => onScaleChange(e.target.value)}>
-          {scaleTypes && scaleTypes.map(scale => (
+          {Array.isArray(scaleTypes) && scaleTypes.map(scale => (
             <option key={scale} value={scale}>{scale}</option>
           ))}
         </select>
@@ -79,7 +79,7 @@ function Controls({
       <div style={{ marginBottom: '15px' }}>
          <label>Chord: </label>
          <select value={selectedChordType} onChange={(e) => onChordChange(e.target.value)}>
-           {chordTypes && chordTypes.map(chord => (
+           {Array.isArray(chordTypes) && chordTypes.map(chord => (
              <option key={chord} value={chord}>{chord}</option>
            ))}
          </select>
