@@ -4,7 +4,7 @@ import InfoDisplay from './components/InfoDisplay';
 import MidiMonitorDisplay from './components/MidiMonitorDisplay';
 import PianoKeyboard from './components/PianoKeyboard';
 import useMidi from './hooks/useMidi'; // Import the custom hook
-import useMetronome from './hooks/useMetronome'; // Import the metronome hook
+import useMetronome from './hooks/useMetronome.js'; // Import the metronome hook
 
 function App() {
   // --- State Management ---
