@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 
 function PianoKeyboard({ rootNote, notesToHighlight = [] }) {
   const canvasRef = useRef(null);
+  console.log('PianoKeyboard received notesToHighlight:', notesToHighlight);
   const startNote = 60; // C4 (Middle C)
   const numOctaves = 2;
   const numWhiteKeys = 7 * numOctaves + 1; // Include the C at the end of the second octave

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Note, Scale } from '@tonaljs/tonal'; // Import for getting degree names and scale intervals
+import { Note, Scale, Chord } from '@tonaljs/tonal'; // Import for getting degree names and scale intervals
 
 function Controls({ 
   // Mode
@@ -22,7 +22,8 @@ function Controls({
   onChordChange,
 
   // Diatonic Chord Mode Props
-  diatonicChordTypes,
+  diatonicTriads = [],
+  diatonicSevenths = [],
   selectedDiatonicDegree,
   showSevenths,
   splitHandVoicing,
@@ -53,7 +54,8 @@ function Controls({
   onChangeMetronomeTimeSignature,
 }) {
 
-  console.log('Controls.jsx - Received rootNotes prop:', rootNotes);
+  console.log('Controls.jsx - Received diatonicTriads prop:', diatonicTriads);
+  console.log('Controls.jsx - Received diatonicSevenths prop:', diatonicSevenths);
   //console.log('Controls.jsx - Diatonic Chords:', diatonicChordTypes);
 
   const handleInputChange = (event) => {
@@ -135,25 +137,18 @@ function Controls({
         <div style={{ marginTop: '10px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
           <h4>Diatonic Chords</h4>
           <div style={{ marginBottom: '10px', display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-            {Array.isArray(diatonicChordTypes) && diatonicChordTypes.map((chordType, index) => {
-                // Determine the root note for this degree
-                const scaleIntervals = Scale.get(`${selectedRootNote} ${selectedScaleType}`).intervals;
-                const chordRootName = (Array.isArray(scaleIntervals) && scaleIntervals[index]) ? 
-                                        Note.transpose(selectedRootNote, scaleIntervals[index]) : '?';
+            {(showSevenths ? diatonicSevenths : diatonicTriads).map((fullChordName, index) => {
+                if (!fullChordName) return null;
                 
-                // Determine the actual type (triad/seventh) - needs seventh types passed!
-                // FOR NOW: Assume diatonicChordTypes contains correct type based on showSevenths
-                // TODO: Pass diatonicSeventhChordTypes and select based on showSevenths
-                const actualChordType = chordType; 
-                const fullChordName = chordRootName + actualChordType;
-                const quality = getChordQuality(fullChordName); // Use full name
+                const chordData = Chord.get(fullChordName);
+                const quality = chordData.quality;
                 const roman = getRomanNumeral(index);
-                // Basic styling based on quality
-                let qualityStyle = {};
-                if (quality === 'minor') qualityStyle.fontWeight = 'normal';
-                if (quality === 'diminished') qualityStyle.opacity = 0.7;
                 
-                const buttonText = `${quality === 'minor' ? roman.toLowerCase() : roman}${quality === 'diminished' ? '°' : ''}`;
+                let qualityStyle = {};
+                if (quality === 'Minor') qualityStyle.fontWeight = 'normal';
+                if (quality === 'Diminished') qualityStyle.opacity = 0.7;
+                
+                const buttonText = `${quality === 'Minor' ? roman.toLowerCase() : roman}${quality === 'Diminished' ? '°' : ''}`;
                 const isActive = index === selectedDiatonicDegree;
 
                 return (
@@ -165,11 +160,11 @@ function Controls({
                             border: isActive ? '2px solid blue' : '1px solid grey',
                             padding: '5px 8px',
                         }}
-                        title={fullChordName || 'N/A'} // Show full name on hover
+                        title={fullChordName}
                     >
-                        {buttonText} ({fullChordName || '?'})
+                        {buttonText} ({fullChordName})
                     </button>
-                )
+                );
              })}
           </div>
           <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap'}}>

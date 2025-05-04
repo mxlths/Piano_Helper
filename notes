@@ -1,1 +1,5 @@
 npm run deploy
+
+npm run dev
+
+What does - npm run build do?

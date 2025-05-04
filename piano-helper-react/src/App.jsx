@@ -7,7 +7,8 @@ import useMidi from './hooks/useMidi'; // Import the custom hook
 import useMetronome from './hooks/useMetronome.js'; // Import the metronome hook
 import { Scale, Note, Chord, ScaleType, ChordType, PcSet, Interval } from "@tonaljs/tonal"; // Import Tonal functions and Interval
 
-console.log("Tonal PcSet object:", PcSet); // <-- Add log for PcSet object
+console.log("Tonal PcSet object:", PcSet);
+console.log("Tonal Scale object:", Scale); // <-- Add log for Scale object
 
 // --- Constants ---
 // const ROOT_NOTES = PcSet.chroma(); // TEMP: PcSet.chroma() returning '000000000000'
@@ -70,32 +71,63 @@ function App() {
   const selectedRootWithOctave = useMemo(() => `${selectedRootNote}${selectedOctave}`, [selectedRootNote, selectedOctave]);
   const rootNoteMidi = useMemo(() => Note.midi(selectedRootWithOctave), [selectedRootWithOctave]);
   const scaleName = useMemo(() => `${selectedRootNote} ${selectedScaleType}`, [selectedRootNote, selectedScaleType]);
+  const scaleInfo = useMemo(() => {
+      const info = Scale.get(scaleName);
+      return info;
+  }, [scaleName]); 
 
-  // Calculate diatonic chord TYPES based on scale
-  const diatonicChordTypes = useMemo(() => { // Renamed from diatonicChordNames
+  // Get FULL diatonic triad and seventh chord names
+  const diatonicTriads = useMemo(() => {
       try {
-        // Tonal expects scale name like "C major"
-        const types = Scale.scaleChords(scaleName); // Gets triad types: M, m, dim
-        return Array.isArray(types) ? types : [];
-      } catch {
-          return []; // Handle invalid scale name
+        const degrees = Scale.degrees(scaleName);
+        if (typeof degrees !== 'function') return []; // Ensure degrees is a function
+        const chords = [];
+        for (let i = 1; i <= 7; i++) {
+            const tonic = degrees(i);    // 1st degree note
+            const third = degrees(i + 2);  // 3rd degree note (relative to tonic)
+            const fifth = degrees(i + 4);  // 5th degree note (relative to tonic)
+            if (!tonic || !third || !fifth) continue; // Skip if notes are invalid
+            
+            // Detect chord based on notes
+            const detected = Chord.detect([tonic, third, fifth]);
+            // Prefer simpler names, or just take the first
+            const chordName = detected.length > 0 ? detected[0] : `${tonic}?`; // Fallback name
+            chords.push(chordName);
+        }
+        console.log(`App.jsx - Calculated Diatonic Triads for ${scaleName}:`, chords); // Log results
+        return chords.length === 7 ? chords : []; // Ensure we have 7 chords
+      } catch (e) {
+          console.error(`Error building triads for ${scaleName}:`, e); return [];
       }
-  }, [scaleName]);
+  }, [scaleName]); // Depend only on scaleName
 
-  const diatonicSeventhChordTypes = useMemo(() => { // Added for 7ths
+  const diatonicSevenths = useMemo(() => { 
      try {
-        const types = Scale.seventhChords(scaleName); // Gets 7th types: maj7, m7, m7b5
-        return Array.isArray(types) ? types : [];
-     } catch {
-         return [];
+        const degrees = Scale.degrees(scaleName);
+        if (typeof degrees !== 'function') return [];
+        const chords = [];
+        for (let i = 1; i <= 7; i++) {
+            const tonic = degrees(i);
+            const third = degrees(i + 2);
+            const fifth = degrees(i + 4);
+            const seventh = degrees(i + 6); // 7th degree note (relative to tonic)
+            if (!tonic || !third || !fifth || !seventh) continue;
+
+            const detected = Chord.detect([tonic, third, fifth, seventh]);
+            const chordName = detected.length > 0 ? detected[0] : `${tonic}?7`; // Fallback name
+            chords.push(chordName);
+        }
+        console.log(`App.jsx - Calculated Diatonic Sevenths for ${scaleName}:`, chords); // Log results
+        return chords.length === 7 ? chords : [];
+     } catch (e) {
+         console.error(`Error building 7th chords for ${scaleName}:`, e); return [];
      }
-  }, [scaleName]);
+  }, [scaleName]); // Depend only on scaleName
 
   const notesToHighlight = useMemo(() => {
     let calculatedNotes = [];
     const octave = selectedOctave;
     const rootName = selectedRootNote;
-    const scaleInfo = Scale.get(scaleName); // Get scale info once
 
     try {
       if (currentMode === 'scale_display' && selectedScaleType) {
@@ -112,32 +144,54 @@ function App() {
            calculatedNotes = chordData.notes.map(Note.midi).filter(Boolean);
          }
       } else if (currentMode === 'diatonic_chords') {
-        if (!Array.isArray(scaleInfo.intervals) || scaleInfo.intervals.length === 0) return []; // Need intervals
+        const targetChords = showSevenths ? diatonicSevenths : diatonicTriads;
         
-        const degreeIndex = selectedDiatonicDegree;
-        const chordTypes = showSevenths ? diatonicSeventhChordTypes : diatonicChordTypes;
-        
-        if (!Array.isArray(chordTypes) || chordTypes.length <= degreeIndex) return []; // Check if types array is valid
-        
-        const chordType = chordTypes[degreeIndex];
-        if (!chordType) return []; // Check if type exists for this degree
+        // --- MODIFICATION START ---
+        // Ensure targetChords is a valid array with at least 7 elements 
+        // AND the degree is within bounds before proceeding.
+        if (!Array.isArray(targetChords) || targetChords.length < 7 || selectedDiatonicDegree < 0 || selectedDiatonicDegree >= targetChords.length) { 
+            console.warn(`App.jsx - Diatonic Mode - Waiting for valid chords or valid degree. Chords length: ${Array.isArray(targetChords) ? targetChords.length : 'N/A'}, Degree: ${selectedDiatonicDegree}`);
+            return []; // Return empty if chords aren't ready or degree is invalid
+        }
+        // --- MODIFICATION END ---
 
-        // Determine the root note of this specific diatonic chord
-        const chordRootName = Note.transpose(rootName, scaleInfo.intervals[degreeIndex]);
-        if (!chordRootName) return []; // Check if transpose worked
-        
+        const fullChordName = targetChords[selectedDiatonicDegree];
+        if (!fullChordName) {
+            console.warn(`No valid chord name found for degree ${selectedDiatonicDegree}`); return [];
+        }
+
+        // We need the root of *this* chord to calculate the correct octave start
+        const chordDataForRoot = Chord.get(fullChordName); // Get data just to find the root
+        if (chordDataForRoot.empty) {
+             console.warn(`Could not parse chord ${fullChordName} to find root`); return [];
+        }
+        const chordRootName = chordDataForRoot.tonic;
         const chordRootWithOctave = `${chordRootName}${octave}`;
         const chordRootMidi = Note.midi(chordRootWithOctave);
-        if (!chordRootMidi) return []; // Check if root MIDI is valid
+        if (!chordRootMidi) { console.warn(`Invalid MIDI for ${chordRootWithOctave}`); return []; }
 
-        // Construct the full chord name (e.g., "Dm", "G7")
-        const fullChordName = chordRootName + chordType;
+        console.log(`App.jsx - Diatonic Mode - Attempting chord: ${fullChordName} starting near ${chordRootWithOctave}`);
 
-        // Get the notes of the target chord using the full name and root+octave
-        const chordData = Chord.getChord(fullChordName, chordRootWithOctave);
-        if (!chordData || !Array.isArray(chordData.notes) || chordData.notes.length === 0) return [];
+        // --- MODIFICATION START ---
+        // Get the chord TYPE alias (e.g., 'M', 'm', 'm7', 'm7b5', 'dim')
+        // Chord.getChord needs the TYPE alias, not the full symbol like 'CM' or 'Dm7'.
+        const chordTypeAlias = chordDataForRoot.aliases?.[0]; // Get the primary alias
+        if (!chordTypeAlias) {
+             console.warn(`App.jsx - Diatonic Mode - Could not determine chord type alias for ${fullChordName}. ChordData:`, chordDataForRoot);
+             return [];
+        }
+
+        const chordData = Chord.getChord(chordTypeAlias, chordRootWithOctave); 
+        console.log(`App.jsx - Diatonic Mode - Chord.getChord result for type alias '${chordTypeAlias}' and root '${chordRootWithOctave}':`, chordData);
+        // --- MODIFICATION END ---
+        
+        if (!chordData || !Array.isArray(chordData.notes) || chordData.notes.length === 0) {
+             console.warn(`App.jsx - Diatonic Mode - Failed to get valid notes for ${fullChordName} using type ${chordTypeAlias}`);
+             return []; // Return empty array if chord notes invalid
+         }
 
         let chordNotes = chordData.notes; // Note names with correct octave
+        console.log(`App.jsx - Diatonic Mode - Initial Chord Notes:`, chordNotes);
 
         // Apply RH Inversion
         if (rhInversion > 0 && rhInversion < chordNotes.length) {
@@ -147,25 +201,30 @@ function App() {
             // Transpose the moved notes up an octave
             const invertedNotes = inversionSlice.map(n => Note.transpose(n, '8P')); 
             chordNotes = [...remainingSlice, ...invertedNotes];
+             console.log(`App.jsx - Diatonic Mode - Notes after Inversion:`, chordNotes);
         }
         
         let midiNotes = chordNotes.map(Note.midi).filter(Boolean);
-        if (midiNotes.length === 0) return [];
+         console.log(`App.jsx - Diatonic Mode - Calculated MIDI notes:`, midiNotes);
+        if (midiNotes.length === 0) {
+             console.warn(`App.jsx - Diatonic Mode - No valid MIDI notes for ${fullChordName}`);
+             return []; 
+        }
 
         // Apply Split Hand Voicing
         if (splitHandVoicing) {
-          // Ensure chordRootMidi is valid before calculating LH note
-          if (chordRootMidi !== null && chordRootMidi >= 24) { // Check if MIDI is valid and high enough for LH note
-              const actualLhNote = chordRootMidi - 24; // 2 octaves below the chord root
-              // Combine LH note with RH notes (which are already calculated and possibly inverted)
+          if (chordRootMidi !== null && chordRootMidi >= 24) {
+              const actualLhNote = chordRootMidi - 24;
               calculatedNotes = [actualLhNote, ...midiNotes];
           } else {
               console.warn("Could not calculate valid LH note for split voicing.");
-              calculatedNotes = midiNotes; // Fallback to only RH notes
+              calculatedNotes = midiNotes; 
           }
         } else {
           calculatedNotes = midiNotes;
         }
+         console.log(`App.jsx - Diatonic Mode - Final calculatedNotes before filter:`, calculatedNotes);
+
       }
     } catch (error) {
       console.error("Error calculating notes:", error);
@@ -173,9 +232,10 @@ function App() {
     }
 
     // Filter final notes
+    // console.log('App.jsx - notesToHighlight before filter:', calculatedNotes); // Keep this log too
     return calculatedNotes.filter(n => n !== null && n >= 0 && n <= 127);
 
-  }, [currentMode, selectedRootNote, selectedOctave, selectedScaleType, selectedChordType, rootNoteMidi, scaleName, diatonicChordTypes, diatonicSeventhChordTypes, selectedDiatonicDegree, showSevenths, splitHandVoicing, rhInversion]);
+  }, [currentMode, selectedRootNote, selectedOctave, selectedScaleType, selectedChordType, rootNoteMidi, scaleName, diatonicTriads, diatonicSevenths, selectedDiatonicDegree, showSevenths, splitHandVoicing, rhInversion]);
 
   // --- Event Handlers ---
   const handleModeChange = (newMode) => {
@@ -267,13 +327,14 @@ function App() {
         onScaleChange={handleScaleChange}
         onChordChange={handleChordChange} // For chord_search mode
 
-        // Diatonic Chord Mode Props
-        diatonicChordTypes={diatonicChordTypes}
+        // Diatonic Chord Mode Props - CORRECTED
+        diatonicTriads={diatonicTriads} // Pass the calculated triads
+        diatonicSevenths={diatonicSevenths} // Pass the calculated sevenths
         selectedDiatonicDegree={selectedDiatonicDegree}
         showSevenths={showSevenths}
         splitHandVoicing={splitHandVoicing}
         rhInversion={rhInversion}
-        inversions={INVERSIONS} // Pass inversion options
+        inversions={INVERSIONS} 
         onDiatonicDegreeChange={handleDiatonicDegreeChange}
         onShowSeventhsChange={handleShowSeventhsChange}
         onSplitHandVoicingChange={handleSplitHandVoicingChange}
@@ -304,14 +365,15 @@ function App() {
         notesToHighlight={notesToHighlight}
       />
       <InfoDisplay
-        // Pass necessary state for diatonic mode display
+        // Pass necessary state for diatonic mode display - CORRECTED
         selectedRoot={selectedRootWithOctave}
         selectedScaleType={selectedScaleType}
         selectedChordType={selectedChordType}
         currentMode={currentMode}
-        diatonicChordTypes={diatonicChordTypes} // Pass chord types
-        selectedDiatonicDegree={selectedDiatonicDegree} // Pass selected degree
-        showSevenths={showSevenths} // Pass seventh state
+        diatonicTriads={diatonicTriads} // Pass the calculated triads
+        diatonicSevenths={diatonicSevenths} // Pass the calculated sevenths
+        selectedDiatonicDegree={selectedDiatonicDegree}
+        showSevenths={showSevenths}
       />
       <MidiMonitorDisplay
         logMessages={midiLogMessages}

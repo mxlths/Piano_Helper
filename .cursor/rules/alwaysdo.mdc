@@ -4,3 +4,4 @@ globs:
 alwaysApply: true
 ---
 You can always ask to see the midi-monitor example code.
+Include explicit instructions for actions you wish for me to perform in the program when we are testing code.
