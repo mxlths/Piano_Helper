@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { WebMidi } from 'webmidi'; // Import the library
+// Try default import for webmidi v2.x
+import WebMidi from 'webmidi'; 
 
 /**
  * Custom Hook to manage WebMIDI API interactions.
