@@ -13,6 +13,7 @@ let appState;
 let startButton, tempoInput, accentSelect; // Metronome controls
 let midiMonitorDiv; // MIDI Monitor Display
 let midiInputSelect, midiOutputSelect; // Device selectors
+let midiRefreshButton; // Refresh button
 
 // MIDI Log State
 const MAX_MIDI_LOG_LINES = 15; 
@@ -110,17 +111,17 @@ function initializeUI() {
     startButton = createButton('Start Metronome');
     startButton.parent(controlsDiv);
     startButton.mousePressed(toggleMetronome);
-    startButton.style('margin-right', '20px'); // Add some spacing
+    startButton.style('margin-right', '20px'); 
 
     // Tempo Input
     let tempoLabel = createSpan('Tempo (BPM):');
     tempoLabel.parent(controlsDiv);
     tempoInput = createInput(appState.metronome.bpm.toString(), 'number');
     tempoInput.parent(controlsDiv);
-    tempoInput.attribute('min', '30'); // Set reasonable limits
+    tempoInput.attribute('min', '30'); 
     tempoInput.attribute('max', '300');
     tempoInput.style('width', '60px');
-    tempoInput.input(updateTempo); // Use input event for live updates
+    tempoInput.input(updateTempo); 
 
      // Accent/Time Signature Select
     let accentLabel = createSpan('Accent:');
@@ -131,11 +132,17 @@ function initializeUI() {
     accentSelect.option('none');
     accentSelect.option('4/4');
     accentSelect.option('3/4');
-    accentSelect.selected(appState.metronome.accentType); // Set initial value
+    accentSelect.selected(appState.metronome.accentType); 
     accentSelect.changed(updateAccent);
 
     // --- MIDI Device Selectors --- 
-    createMidiDeviceSelectors(controlsDiv); // Create the dropdowns
+    createMidiDeviceSelectors(controlsDiv); // Create the initial dropdowns
+
+    // --- MIDI Refresh Button (for debugging iOS/WebMIDI Browser) ---
+    midiRefreshButton = createButton('Refresh MIDI Lists');
+    midiRefreshButton.parent(controlsDiv);
+    midiRefreshButton.style('margin-left', '20px');
+    midiRefreshButton.mousePressed(refreshMidiDeviceSelectorsUI);
 
     // --- MIDI Monitor --- 
     midiMonitorDiv = select('#midi-monitor');
@@ -183,31 +190,47 @@ function updateAccent() {
 function createMidiDeviceSelectors(parentDiv) {
     if (!midiHandler) return;
 
+    // Clean up previous elements if they exist (needed for refresh)
+    if (midiInputSelect) midiInputSelect.remove();
+    if (midiOutputSelect) midiOutputSelect.remove();
+    // TODO: Ideally, remove the labels too, requires storing references
+    parentDiv.elt.querySelectorAll('.midi-device-label').forEach(el => el.remove());
+
     // Input Selector
     let inputLabel = createSpan('MIDI Input:');
+    inputLabel.addClass('midi-device-label'); // Add class for easier removal
     inputLabel.parent(parentDiv);
     inputLabel.style('margin-left', '20px');
     midiInputSelect = createSelect();
     midiInputSelect.parent(parentDiv);
-    midiInputSelect.option('-- Select Input --', ''); // Default empty option
+    midiInputSelect.option('-- Select Input --', ''); 
     const inputs = midiHandler.getInputDevices();
     inputs.forEach(input => {
         midiInputSelect.option(input.name, input.id);
     });
     midiInputSelect.changed(handleMidiInputChange);
+    // Restore selection if possible
+    if (appState.midiInputDevice) {
+        midiInputSelect.selected(appState.midiInputDevice);
+    }
 
     // Output Selector
     let outputLabel = createSpan('MIDI Output:');
+    outputLabel.addClass('midi-device-label'); // Add class for easier removal
     outputLabel.parent(parentDiv);
     outputLabel.style('margin-left', '20px');
     midiOutputSelect = createSelect();
     midiOutputSelect.parent(parentDiv);
-    midiOutputSelect.option('-- Select Output --', ''); // Default empty option
+    midiOutputSelect.option('-- Select Output --', ''); 
     const outputs = midiHandler.getOutputDevices();
     outputs.forEach(output => {
         midiOutputSelect.option(output.name, output.id);
     });
     midiOutputSelect.changed(handleMidiOutputChange);
+    // Restore selection if possible
+    if (appState.midiOutputDevice) {
+        midiOutputSelect.selected(appState.midiOutputDevice);
+    }
 }
 
 function handleMidiInputChange() {
@@ -224,6 +247,17 @@ function handleMidiOutputChange() {
     appState.midiOutputDevice = selectedId || null;
     midiHandler.selectOutput(selectedId || null);
     // TODO: Potentially update metronome to use MIDI out if selected?
+}
+
+// Function called by the refresh button
+function refreshMidiDeviceSelectorsUI() {
+    console.log("Manually refreshing MIDI device selectors UI...");
+    const controlsDiv = select('#controls'); 
+    if (controlsDiv) {
+        createMidiDeviceSelectors(controlsDiv); // Recreate the selectors
+    } else {
+        console.error("Could not find controls div for MIDI refresh.");
+    }
 }
 
 // --- MIDI Message Logging --- 
