@@ -71,6 +71,7 @@ function InfoDisplay({
         }
 
         // Now, safely use targetChordName
+        console.log('InfoDisplay - targetChordName before Chord.get:', targetChordName); // <-- Add log
         const chordData = Chord.get(targetChordName); // Get data using just the name
         if (chordData && Array.isArray(chordData.notes) && chordData.notes.length > 0) {
             const romanNumerals = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii'];
