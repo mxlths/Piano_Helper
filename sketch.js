@@ -65,8 +65,8 @@ async function setup() {
     // trackPlayer = new TrackPlayer();
     // uiManager = new UIManager();
 
-    // Initialize MIDI
-    await midiHandler.initialize(); 
+    // Initialize MIDI *AND* pass the UI refresh callback
+    await midiHandler.initialize(refreshMidiDeviceSelectorsUI);
 
     // Initialize UI (including MIDI selectors now that devices are known)
     initializeUI();

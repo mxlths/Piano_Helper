@@ -9,36 +9,36 @@ class MidiHandler {
         this.selectedOutput = null; // The actual MIDIOutput object
 
         this.onMessageCallback = null; // Function to call when a MIDI message arrives
+        this.onDevicesUpdatedCallback = null; // ADDED: Callback for UI refresh
 
         console.log("MidiHandler module initialized");
     }
 
     /**
      * Initializes the Web MIDI API access.
+     * @param {function} devicesUpdatedCallback - Function to call when device list might have changed.
      * @returns {Promise<boolean>} True if successful, false otherwise.
      */
-    async initialize() {
+    async initialize(devicesUpdatedCallback) { // ADDED parameter
         if (!navigator.requestMIDIAccess) {
             console.error("Web MIDI API is not supported in this browser.");
             alert("Web MIDI API is not supported in this browser.");
             return false;
         }
+        this.onDevicesUpdatedCallback = devicesUpdatedCallback; // Store callback
 
         try {
             this.midiAccess = await navigator.requestMIDIAccess({ sysex: false }); // sysex: false for security
             console.log("MIDI Access Granted:", this.midiAccess);
 
-            // Get lists of inputs and outputs
-            this.updateDeviceLists();
-
-            // Add listeners for device connection changes
+            // Add listeners FIRST (in case state changes immediately)
             this.midiAccess.onstatechange = (event) => {
-                console.log("MIDI state changed:", event.port.name, event.port.state);
+                console.log(`MIDI state changed: ${event.port.name} (${event.port.type}) - ${event.port.state}`);
                 this.updateDeviceLists();
-                // TODO: Trigger UI update if needed
-                 // Potentially re-select devices if they disconnect/reconnect?
-                 // Or notify the user.
             };
+
+            // Get initial lists of inputs and outputs
+            this.updateDeviceLists(); // This will now trigger the callback
 
             return true;
         } catch (err) {
@@ -51,19 +51,29 @@ class MidiHandler {
     /** Updates the internal lists of inputs and outputs */
     updateDeviceLists() {
         if (!this.midiAccess) return;
+        console.log("--- Updating device lists ---"); // Log entry
 
         this.inputs = Array.from(this.midiAccess.inputs.values());
         this.outputs = Array.from(this.midiAccess.outputs.values());
 
-        console.log("Available MIDI Inputs:", this.inputs.map(i => ({ id: i.id, name: i.name })));
-        console.log("Available MIDI Outputs:", this.outputs.map(o => ({ id: o.id, name: o.name })));
+        // Log exactly what was found THIS time
+        console.log("Found Inputs:", this.inputs.map(i => i.name));
+        console.log("Found Outputs:", this.outputs.map(o => o.name));
 
         // Deselect if selected device is no longer available
         if (this.selectedInputId && !this.inputs.find(i => i.id === this.selectedInputId)) {
-            this.selectInput(null); 
+            this.selectInput(null, this.onMessageCallback); // Pass callback again on deselect?
         }
         if (this.selectedOutputId && !this.outputs.find(o => o.id === this.selectedOutputId)) {
             this.selectOutput(null);
+        }
+        
+        // Trigger the UI refresh callback if it exists
+        if (this.onDevicesUpdatedCallback) {
+            console.log("Triggering onDevicesUpdatedCallback");
+            this.onDevicesUpdatedCallback();
+        } else {
+            console.log("No onDevicesUpdatedCallback to trigger");
         }
     }
 
