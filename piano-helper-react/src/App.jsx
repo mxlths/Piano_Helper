@@ -33,9 +33,11 @@ function App() {
     bpm: metronomeBpm,
     selectedSoundNote: metronomeSoundNote,
     availableSounds: metronomeSounds,
+    timeSignature: metronomeTimeSignature,
     togglePlay: toggleMetronomePlay,
     changeTempo: changeMetronomeTempo,
     changeSound: changeMetronomeSound,
+    changeTimeSignature: changeMetronomeTimeSignature,
   } = useMetronome(sendMidiMessage); // Pass the sendMessage function
 
   // --- Event Handlers (Placeholder Examples) ---
@@ -70,6 +72,8 @@ function App() {
         onToggleMetronome={toggleMetronomePlay}
         onChangeMetronomeTempo={changeMetronomeTempo}
         onChangeMetronomeSound={changeMetronomeSound}
+        metronomeTimeSignature={metronomeTimeSignature}
+        onChangeMetronomeTimeSignature={changeMetronomeTimeSignature}
       />
       <PianoKeyboard />
       <InfoDisplay 

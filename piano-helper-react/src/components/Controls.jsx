@@ -15,7 +15,10 @@ function Controls({
   metronomeSounds,
   onToggleMetronome,
   onChangeMetronomeTempo,
-  onChangeMetronomeSound
+  onChangeMetronomeSound,
+  // Add Time Signature Props
+  metronomeTimeSignature,
+  onChangeMetronomeTimeSignature 
 }) {
 
   const handleInputChange = (event) => {
@@ -101,6 +104,18 @@ function Controls({
                         {name} ({note})
                     </option>
                 ))}
+            </select>
+            {/* Time Signature Select */}
+            <label htmlFor="metronome-timesig" style={{ marginLeft: '10px' }}> Time Sig: </label>
+             <select
+                id="metronome-timesig"
+                value={metronomeTimeSignature}
+                onChange={(e) => onChangeMetronomeTimeSignature(e.target.value)}
+                disabled={!selectedOutputId}
+            >
+                <option value="none">None</option>
+                <option value="3/4">3/4</option>
+                <option value="4/4">4/4</option>
             </select>
         </div>
         {!selectedOutputId && isMidiInitialized && 

@@ -8,21 +8,32 @@ const METRONOME_SOUNDS = {
   HighWoodBlock: 76,
   LowWoodBlock: 77,
   HighAgogo: 67,
-  // Add more if desired
+  Cowbell: 56,
+  Claves: 75,
+  HighTimbale: 65,
+  LowTimbale: 66,
+  Maracas: 70,
+  LowAgogo: 68,
+  MuteTriangle: 80,
+  OpenTriangle: 81,
 };
 
 const DEFAULT_BPM = 120;
 const DEFAULT_SOUND_NOTE = METRONOME_SOUNDS.HighWoodBlock;
+const DEFAULT_TIME_SIGNATURE = '4/4'; // Default to 4/4
 const MIDI_CHANNEL = 9; // MIDI channels are 0-15, so channel 10 is 9
 const NOTE_ON_CMD = 0x90 | MIDI_CHANNEL; // Keep for reference, but won't use directly
 const NOTE_OFF_CMD = 0x80 | MIDI_CHANNEL; // Keep for reference, but won't use directly
 const DEFAULT_VELOCITY = 100;
+const ACCENT_VELOCITY = 127; // Accent velocity
 const NOTE_DURATION_MS = 50; // How long the note 'on' message lasts virtually
 
 function useMetronome(sendMessage) { // Accept sendMessage as a prop/argument
   const [isPlaying, setIsPlaying] = useState(false);
   const [bpm, setBpm] = useState(DEFAULT_BPM);
   const [selectedSoundNote, setSelectedSoundNote] = useState(DEFAULT_SOUND_NOTE);
+  const [timeSignature, setTimeSignature] = useState(DEFAULT_TIME_SIGNATURE);
+  const [currentBeat, setCurrentBeat] = useState(0); // Track the current beat in the measure
 
   const intervalRef = useRef(null);
   const timeoutRef = useRef(null); // Ref for the Note Off timeout
@@ -40,6 +51,7 @@ function useMetronome(sendMessage) { // Accept sendMessage as a prop/argument
         timeoutRef.current = null;
     }
     setIsPlaying(false);
+    setCurrentBeat(0); // Reset beat count on stop
      // Optionally send an immediate Note Off for the last played note
     if (sendMessage && selectedSoundNote) {
          try {
@@ -58,31 +70,37 @@ function useMetronome(sendMessage) { // Accept sendMessage as a prop/argument
         return;
     }
 
-    console.log(`Starting metronome: BPM=${bpm}, Sound=${selectedSoundNote}`);
+    console.log(`Starting metronome: BPM=${bpm}, Sound=${selectedSoundNote}, TimeSig=${timeSignature}`);
     setIsPlaying(true);
+    setCurrentBeat(0); // Reset beat count on start
     stopMetronome(); // Clear any existing interval/timeouts first
 
     const intervalMs = (60 / bpm) * 1000;
 
+    let beatsPerMeasure = Infinity; 
+    if (timeSignature === '3/4') beatsPerMeasure = 3;
+    else if (timeSignature === '4/4') beatsPerMeasure = 4;
+
     intervalRef.current = setInterval(() => {
+      // Increment beat count (1-based for calculation)
+      const nextBeat = (currentBeat % beatsPerMeasure) + 1;
+      setCurrentBeat(nextBeat);
+
+      // Determine velocity based on accent
+      let velocity = DEFAULT_VELOCITY;
+      if (nextBeat === 1 && (timeSignature === '3/4' || timeSignature === '4/4')) {
+        velocity = ACCENT_VELOCITY;
+      }
+      
       // Send Note On using WebMidi helper
       try {
-          console.log(`Sending Note On: ${selectedSoundNote} via helper`);
-          // Assuming sendMessage implicitly provides access to the outputDevice
-          // This is a potential issue - useMetronome doesn't have direct access 
-          // to the outputDevice object from useMidi.
-          // We need to pass the outputDevice or use a context/different approach.
-          
-          // *** TEMPORARY WORKAROUND: Use raw send for now, need to refactor ***
-          //sendMessage([NOTE_ON_CMD, selectedSoundNote, DEFAULT_VELOCITY]);
-          
+          console.log(`Beat: ${nextBeat}/${beatsPerMeasure}, Vel: ${velocity}`);
           // Use correct signature for WebMidi.js send(status, [data1, data2], timestamp)
-          sendMessage(NOTE_ON_CMD, [selectedSoundNote, DEFAULT_VELOCITY]);
+          sendMessage(NOTE_ON_CMD, [selectedSoundNote, velocity]);
 
           // Schedule Note Off using raw send with correct signature
           timeoutRef.current = setTimeout(() => {
               console.log(`Sending Note Off: ${selectedSoundNote} via raw`);
-              //sendMessage([NOTE_OFF_CMD, selectedSoundNote, 0]); // Velocity 0 for Note Off
               sendMessage(NOTE_OFF_CMD, [selectedSoundNote, 0]);
               timeoutRef.current = null;
           }, NOTE_DURATION_MS);
@@ -109,7 +127,7 @@ function useMetronome(sendMessage) { // Accept sendMessage as a prop/argument
       }
     }, intervalMs);
 
-  }, [isPlaying, bpm, selectedSoundNote, sendMessage, stopMetronome]);
+  }, [isPlaying, bpm, selectedSoundNote, sendMessage, stopMetronome, timeSignature, currentBeat]);
 
   // Cleanup on unmount or when dependencies change that require stopping
   useEffect(() => {
@@ -152,15 +170,32 @@ function useMetronome(sendMessage) { // Accept sendMessage as a prop/argument
       }
   }, []);
 
+  // Function to change time signature
+   const changeTimeSignature = useCallback((newTimeSignature) => {
+      if (['none', '3/4', '4/4'].includes(newTimeSignature)) {
+          console.log(`Setting Time Signature to ${newTimeSignature}`);
+          setTimeSignature(newTimeSignature);
+          setCurrentBeat(0); // Reset beat count on change
+          // If playing, restart the interval with the new signature
+          if (isPlaying) {
+              startMetronome();
+          }
+      } else {
+          console.warn(`Invalid time signature selected: ${newTimeSignature}`);
+      }
+   }, [isPlaying, startMetronome]);
+
 
   return {
     isPlaying,
     bpm,
     selectedSoundNote,
+    timeSignature, // Expose time signature state
     availableSounds: METRONOME_SOUNDS, // Expose available sounds
     togglePlay,
     changeTempo,
     changeSound,
+    changeTimeSignature, // Expose function to change time signature
   };
 }
 
