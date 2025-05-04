@@ -98,18 +98,25 @@ function useMidi() {
     } 
   }, [isInitialized, log, updateDeviceLists]); // Re-run if initialization status changes
 
-  // --- Device Selection --- (Placeholders)
+  // --- Device Selection --- 
   const selectInput = useCallback((id) => {
-    log(`Attempting to select input: ${id}`);
-    // TODO: Add logic to get WebMidi input object and add listener
+    // Check if selection actually changed
+    if (id === selectedInputId) return;
+
+    log(`Selecting input: ${id || 'None'}`);
+    // TODO: Detach listener from previous input if selectedInputId was not null
     setSelectedInputId(id);
-  }, [log]);
+    // TODO: Attach listener to new input if id is not null
+  }, [log, selectedInputId]); // Add selectedInputId to dependency array
 
   const selectOutput = useCallback((id) => {
-    log(`Attempting to select output: ${id}`);
-    // TODO: Add logic to get WebMidi output object
+    // Check if selection actually changed
+    if (id === selectedOutputId) return;
+
+    log(`Selecting output: ${id || 'None'}`);
+    // TODO: Get the WebMidi Output object and store it maybe?
     setSelectedOutputId(id);
-  }, [log]);
+  }, [log, selectedOutputId]); // Add selectedOutputId to dependency array
 
   // --- Message Sending --- (Placeholder)
   const sendMessage = useCallback((data) => {
