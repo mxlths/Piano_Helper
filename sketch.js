@@ -303,7 +303,9 @@ async function handleMidiConnectRefresh() {
             if (success) {
                 logToMonitor("Sketch: MIDI Initialized successfully via button press. midiInitialized set to true."); // Use new logger
                 midiInitialized = true; 
-                // Note: Initial population happens via the callback passed to initialize
+                // Note: Initial population should happen via onstatechange OR the explicit call below.
+                logToMonitor("Sketch: Explicitly calling updateDeviceLists() after successful initialize...");
+                midiHandler.updateDeviceLists(); // Call update explicitly after first init
             } else {
                 logToMonitor("Sketch: MIDI Initialization failed via button press (initialize returned false).", 'ERROR'); // Use new logger
                 // alert handled in midiHandler

@@ -54,9 +54,7 @@ class MidiHandler {
             };
             this.logger("MidiHandler: Added onstatechange listener."); // Use logger
 
-            this.logger("MidiHandler: Calling updateDeviceLists() for the first time..."); // Use logger
-            this.updateDeviceLists();
-            this.logger("MidiHandler: Initial updateDeviceLists() call finished."); // Use logger
+            this.logger("MidiHandler: Initialization finished. Waiting for onstatechange or refresh...");
 
             return true;
         } catch (err) {
