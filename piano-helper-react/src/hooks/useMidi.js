@@ -105,15 +105,34 @@ function useMidi() {
     // This handles cases where WebMidi might be disabled between renders (e.g., by StrictMode)
     if (isInitialized && WebMidi.enabled) { 
         const handleDeviceChange = (e) => {
-            // Log the raw port object via the on-screen logger
-            try {
-                log(`Device ${e.type}: Port Object: ${JSON.stringify(e.port)}`); 
-            } catch (error) {
-                 log(`Device ${e.type}: Port Object could not be stringified.`, 'WARN');
+            let portIsValid = typeof e.port === 'object' && e.port !== null && e.port.id !== undefined;
+
+            if (portIsValid) {
+                // Log the raw port object via the on-screen logger
+                try {
+                    log(`Device ${e.type}: Port Object: ${JSON.stringify(e.port)}`); 
+                } catch (error) {
+                     log(`Device ${e.type}: Port Object could not be stringified.`, 'WARN');
+                }
+                // Original log kept for context
+                log(`Device ${e.type}: ${e.port?.name || 'undefined'} (${e.port?.type || 'undefined'})`); 
+            } else {
+                // Log that the received port object was invalid
+                log(`Device ${e.type}: Received invalid Port data in event: ${JSON.stringify(e.port)}`, 'WARN');
             }
-            // Original log kept for context
-            log(`Device ${e.type}: ${e.port?.name || 'undefined'} (${e.port?.type || 'undefined'})`); 
-            updateDeviceLists();
+
+            // Update lists: Immediately for disconnect, slightly delayed for connect
+            if (e.type === 'disconnected') {
+                 log(`Updating lists immediately for disconnect.`);
+                 updateDeviceLists();
+            } else if (e.type === 'connected') {
+                 log(`Delaying list update slightly for connect (50ms)...`);
+                 setTimeout(updateDeviceLists, 50); // 50ms delay
+            } else {
+                 // Fallback for unknown event types?
+                 log(`Updating lists for unknown event type: ${e.type}`);
+                 updateDeviceLists();
+            }
         };
 
         log('Adding WebMidi connected/disconnected listeners...');
