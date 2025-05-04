@@ -7,8 +7,15 @@ function Controls({
   selectedOutputId,
   onSelectInput, 
   onSelectOutput,
-  isMidiInitialized
-  // TODO: Add Metronome controls/props later
+  isMidiInitialized,
+  // Metronome Props
+  isMetronomePlaying,
+  metronomeBpm,
+  metronomeSoundNote,
+  metronomeSounds,
+  onToggleMetronome,
+  onChangeMetronomeTempo,
+  onChangeMetronomeSound
 }) {
 
   const handleInputChange = (event) => {
@@ -63,8 +70,42 @@ function Controls({
         <p><small>MIDI Initialized, but no devices found.</small></p>
       }
 
-      {/* TODO: Placeholder for Metronome Controls */} 
-      {/* <p>Metronome Controls will go here...</p> */}
+      {/* Metronome Controls */}
+      <div style={{ marginTop: '15px', borderTop: '1px solid #ccc', paddingTop: '10px'}}>
+        <h4>Metronome</h4>
+        <div>
+           <button onClick={onToggleMetronome} disabled={!selectedOutputId}> 
+            {isMetronomePlaying ? 'Stop' : 'Start'}
+           </button>
+           <label htmlFor="metronome-bpm" style={{ marginLeft: '10px' }}> BPM: </label>
+            <input 
+                type="number" 
+                id="metronome-bpm"
+                value={metronomeBpm}
+                onChange={(e) => onChangeMetronomeTempo(e.target.value)}
+                min="30" 
+                max="300" 
+                step="1"
+                style={{ width: '60px'}}
+                disabled={!selectedOutputId}
+            />
+            <label htmlFor="metronome-sound" style={{ marginLeft: '10px' }}> Sound: </label>
+            <select
+                id="metronome-sound"
+                value={metronomeSoundNote}
+                onChange={(e) => onChangeMetronomeSound(e.target.value)}
+                disabled={!selectedOutputId}
+            >
+                {Object.entries(metronomeSounds).map(([name, note]) => (
+                    <option key={note} value={note}>
+                        {name} ({note})
+                    </option>
+                ))}
+            </select>
+        </div>
+        {!selectedOutputId && isMidiInitialized && 
+            <p><small>Select a MIDI Output device to enable Metronome.</small></p>}
+      </div>
     </div>
   );
 }

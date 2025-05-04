@@ -4,6 +4,7 @@ import InfoDisplay from './components/InfoDisplay';
 import MidiMonitorDisplay from './components/MidiMonitorDisplay';
 import PianoKeyboard from './components/PianoKeyboard';
 import useMidi from './hooks/useMidi'; // Import the custom hook
+import useMetronome from './hooks/useMetronome'; // Import the metronome hook
 
 function App() {
   // --- State Management ---
@@ -23,8 +24,19 @@ function App() {
     logMessages: midiLogMessages,
     selectInput: selectMidiInput, // Rename for clarity
     selectOutput: selectMidiOutput, // Rename for clarity
-    // sendMessage: sendMidiMessage, // We might not need sendMessage directly here
+    sendMessage: sendMidiMessage, // Import sendMessage
   } = useMidi();
+
+  // Metronome state and functions
+  const {
+    isPlaying: isMetronomePlaying,
+    bpm: metronomeBpm,
+    selectedSoundNote: metronomeSoundNote,
+    availableSounds: metronomeSounds,
+    togglePlay: toggleMetronomePlay,
+    changeTempo: changeMetronomeTempo,
+    changeSound: changeMetronomeSound,
+  } = useMetronome(sendMidiMessage); // Pass the sendMessage function
 
   // --- Event Handlers (Placeholder Examples) ---
   const handleRootChange = (newRoot) => {
@@ -50,7 +62,14 @@ function App() {
         onSelectInput={selectMidiInput}
         onSelectOutput={selectMidiOutput}
         isMidiInitialized={isMidiInitialized}
-        // TODO: Add metronome props later
+        // --- Metronome Props ---
+        isMetronomePlaying={isMetronomePlaying}
+        metronomeBpm={metronomeBpm}
+        metronomeSoundNote={metronomeSoundNote}
+        metronomeSounds={metronomeSounds}
+        onToggleMetronome={toggleMetronomePlay}
+        onChangeMetronomeTempo={changeMetronomeTempo}
+        onChangeMetronomeSound={changeMetronomeSound}
       />
       <PianoKeyboard />
       <InfoDisplay 
