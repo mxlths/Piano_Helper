@@ -254,24 +254,22 @@ function useMidi() {
   }, [log, selectedInputId, handleIncomingMidiMessage]); // Dependencies
 
   const selectOutput = useCallback((id) => {
-    if (id === selectedOutputId) return;
-    log(`Selecting output: ${id || 'None'}`);
-    // Store the ID. We don't need the object unless sending messages.
-    setSelectedOutputId(id);
+    // Convert the id (which is likely a string from <select>) to a number
+    const numericId = id !== null ? Number(id) : null;
+
+    if (numericId === selectedOutputId) return;
+
+    log(`Selecting output: ${numericId !== null ? numericId : 'None'}`);
+    // Store the ID as a number
+    setSelectedOutputId(numericId);
   }, [log, selectedOutputId]);
 
   // --- Message Sending ---
   const sendMessage = useCallback((data) => {
-    if (!selectedOutputId) {
+    if (selectedOutputId === null) { // Check for null explicitly
         log("Cannot send MIDI message: No output selected.", 'WARN');
         return;
     }
-    
-    // --- DEBUG LOGS ---
-    const availableOutputIDs = WebMidi.outputs ? WebMidi.outputs.map(o => `ID: ${o.id} (Type: ${typeof o.id})`) : ['None available'];
-    log(`[sendMessage] Attempting to send. Selected Output ID: ${selectedOutputId} (Type: ${typeof selectedOutputId})`);
-    log(`[sendMessage] Available Output IDs at this moment: [${availableOutputIDs.join(', ')}]`);
-    // --- END DEBUG LOGS ---
     
     const outputDevice = WebMidi.getOutputById(selectedOutputId);
     if (outputDevice) {
