@@ -270,11 +270,21 @@ function useMidi() {
         log("Cannot send MIDI message: No output selected.", 'WARN');
         return;
     }
-    
-    const outputDevice = WebMidi.getOutputById(selectedOutputId);
+
+    // --- DEBUG LOGS ---
+    const availableOutputIDs = WebMidi.outputs ? WebMidi.outputs.map(o => `ID: ${o.id} (Type: ${typeof o.id}) Name: ${o.name}`) : ['None available'];
+    log(`[sendMessage] Attempting to send. Selected Output ID: ${selectedOutputId} (Type: ${typeof selectedOutputId})`);
+    log(`[sendMessage] Available Output IDs at this moment: [${availableOutputIDs.join(', ')}]`);
+    const outputDeviceAttempt = WebMidi.getOutputById(selectedOutputId);
+    log(`[sendMessage] Result of WebMidi.getOutputById(${selectedOutputId}): ${outputDeviceAttempt === null ? 'null' : (outputDeviceAttempt === undefined ? 'undefined' : 'Found device')}`);
+    // --- END DEBUG LOGS ---
+
+    const outputDevice = WebMidi.getOutputById(selectedOutputId); // Call again for the actual logic
     if (outputDevice) {
       try {
-        log(`MIDI Out: ${data}`); // Log raw data being sent
+        // Log MIDI Out data in a more readable format if possible (e.g., hex)
+        const dataHex = Array.from(data).map(byte => byte.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+        log(`MIDI Out: [${dataHex}] to ${outputDevice.name}`); // Log raw data being sent
         outputDevice.send(data);
       } catch (error) {
         log(`Error sending MIDI message: ${error.message}`, 'ERROR');
