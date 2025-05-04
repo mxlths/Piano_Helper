@@ -50,13 +50,12 @@ function InfoDisplay({ selectedRoot, selectedScaleType, selectedChordType, curre
       midiNotes = []; // Ensure midiNotes is an array on error
   }
 
-  // Format the data for display - Ensure notes and midiNotes are arrays before mapping/joining
-  const noteNameArray = Array.isArray(notes) ? notes.map(n => musicLogic.midiToNoteName(n)) : [];
+  // Format the data for display - Use the 'notes' array directly for names
   const info = {
     title: title,
     formula: `Formula: ${formula || 'N/A'}`,
     notes: `Notes (MIDI): ${Array.isArray(midiNotes) ? midiNotes.join(', ') : 'N/A'}`,
-    noteNames: `Notes: ${noteNameArray.join(', ') || 'N/A'}`
+    noteNames: `Notes: ${Array.isArray(notes) ? notes.join(', ') : 'N/A'}` // <-- Join the 'notes' array directly
   };
 
   return (
