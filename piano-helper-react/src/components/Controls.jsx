@@ -33,6 +33,9 @@ function Controls({
   onShowSeventhsChange,
   onSplitHandVoicingChange,
   onRhInversionChange,
+  // Add new props for split interval
+  splitHandInterval,
+  onSplitHandIntervalChange,
 
   // MIDI Props
   midiInputs = [], 
@@ -186,6 +189,30 @@ function Controls({
                   />
                   <label htmlFor="split-hand"> Split Hand Voicing</label>
               </div>
+              {/* New Control for Split Interval */} 
+              {splitHandVoicing && (
+                <div style={{ marginLeft: '10px' }}>
+                  <label style={{ marginRight: '5px' }}>Interval:</label>
+                  <label style={{ marginRight: '10px' }}>
+                    <input 
+                      type="radio" 
+                      name="splitInterval" 
+                      value="12" 
+                      checked={splitHandInterval === 12} 
+                      onChange={onSplitHandIntervalChange} 
+                    /> 1 Octave
+                  </label>
+                  <label>
+                    <input 
+                      type="radio" 
+                      name="splitInterval" 
+                      value="24" 
+                      checked={splitHandInterval === 24} 
+                      onChange={onSplitHandIntervalChange} 
+                    /> 2 Octaves
+                  </label>
+                </div>
+              )}
               <div>
                   <label htmlFor="rh-inversion" style={{ marginRight: '5px' }}>RH Inversion:</label>
                   <select 

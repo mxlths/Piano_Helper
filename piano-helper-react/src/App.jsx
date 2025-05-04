@@ -40,6 +40,7 @@ function App() {
   const [showSevenths, setShowSevenths] = useState(false);
   const [splitHandVoicing, setSplitHandVoicing] = useState(false);
   const [rhInversion, setRhInversion] = useState(0); // 0-3 index
+  const [splitHandInterval, setSplitHandInterval] = useState(24); // New state: 12 for 1 octave, 24 for 2 octaves
 
   // MIDI state and functions from our custom hook
   const {
@@ -213,11 +214,13 @@ function App() {
 
         // Apply Split Hand Voicing
         if (splitHandVoicing) {
-          if (chordRootMidi !== null && chordRootMidi >= 24) {
-              const actualLhNote = chordRootMidi - 24;
-              calculatedNotes = [actualLhNote, ...midiNotes];
+          const chordRootMidiValue = Note.midi(chordRootWithOctave); 
+
+          if (chordRootMidiValue !== null && chordRootMidiValue >= splitHandInterval) { // Check if root MIDI is valid and high enough for the interval
+              const actualLhNote = chordRootMidiValue - splitHandInterval; // Use state variable
+              calculatedNotes = [actualLhNote, ...midiNotes]; 
           } else {
-              console.warn("Could not calculate valid LH note for split voicing.");
+              console.warn(`Could not calculate valid LH note for split voicing (root MIDI: ${chordRootMidiValue}, interval: ${splitHandInterval}).`);
               calculatedNotes = midiNotes; 
           }
         } else {
@@ -235,7 +238,7 @@ function App() {
     // console.log('App.jsx - notesToHighlight before filter:', calculatedNotes); // Keep this log too
     return calculatedNotes.filter(n => n !== null && n >= 0 && n <= 127);
 
-  }, [currentMode, selectedRootNote, selectedOctave, selectedScaleType, selectedChordType, rootNoteMidi, scaleName, diatonicTriads, diatonicSevenths, selectedDiatonicDegree, showSevenths, splitHandVoicing, rhInversion]);
+  }, [currentMode, selectedRootNote, selectedOctave, selectedScaleType, selectedChordType, rootNoteMidi, scaleName, diatonicTriads, diatonicSevenths, selectedDiatonicDegree, showSevenths, splitHandVoicing, rhInversion, splitHandInterval]);
 
   // --- Event Handlers ---
   const handleModeChange = (newMode) => {
@@ -269,7 +272,7 @@ function App() {
    const handleChordChange = (newChord) => {
     if (CHORD_TYPES.includes(newChord)) {
       setSelectedChordType(newChord);
-      setCurrentMode('chord_display');
+      setCurrentMode('chord_search');
     }
   };
 
@@ -298,6 +301,14 @@ function App() {
       if (INVERSIONS.find(inv => inv.value === invIndex)) {
           setRhInversion(invIndex);
       }
+  };
+
+  // New handler for split hand interval
+  const handleSplitHandIntervalChange = (event) => {
+    const intervalValue = parseInt(event.target.value, 10);
+    if (intervalValue === 12 || intervalValue === 24) {
+      setSplitHandInterval(intervalValue);
+    }
   };
 
   console.log('App.jsx - ROOT_NOTES:', ROOT_NOTES);
@@ -339,6 +350,8 @@ function App() {
         onShowSeventhsChange={handleShowSeventhsChange}
         onSplitHandVoicingChange={handleSplitHandVoicingChange}
         onRhInversionChange={handleRhInversionChange}
+        splitHandInterval={splitHandInterval}
+        onSplitHandIntervalChange={handleSplitHandIntervalChange}
 
         // MIDI Props
         midiInputs={midiInputs}

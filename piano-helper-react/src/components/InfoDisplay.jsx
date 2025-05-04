@@ -94,7 +94,22 @@ function InfoDisplay({
                 const chordRootName = chordData.tonic;
                 const rootOctave = Note.octave(selectedRoot) || 4;
                 if (chordRootName) { // Ensure we have a root before calculating MIDI
-                    midiNotes = Chord.getChord(fullChordName, `${chordRootName}${rootOctave}`).notes.map(Note.midi).filter(Boolean);
+                    // --- MODIFICATION START ---
+                    // Use the TYPE ALIAS for Chord.getChord, not the full name
+                    const chordTypeAlias = chordData.aliases?.[0]; 
+                    if (!chordTypeAlias) {
+                        console.warn(`InfoDisplay.jsx - Could not determine chord type alias for ${fullChordName}`);
+                        midiNotes = [];
+                    } else {
+                        const chordNotesResult = Chord.getChord(chordTypeAlias, `${chordRootName}${rootOctave}`);
+                        if (chordNotesResult && Array.isArray(chordNotesResult.notes)) {
+                             midiNotes = chordNotesResult.notes.map(Note.midi).filter(Boolean);
+                        } else {
+                             console.warn(`InfoDisplay.jsx - Chord.getChord failed for type ${chordTypeAlias} and root ${chordRootName}${rootOctave}`);
+                             midiNotes = [];
+                        }
+                    }
+                    // --- MODIFICATION END ---
                 } else {
                      console.warn(`Could not get tonic for ${fullChordName} to calculate MIDI notes.`);
                      midiNotes = [];

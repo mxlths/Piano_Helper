@@ -3,8 +3,8 @@ import React, { useRef, useEffect } from 'react';
 function PianoKeyboard({ rootNote, notesToHighlight = [] }) {
   const canvasRef = useRef(null);
   console.log('PianoKeyboard received notesToHighlight:', notesToHighlight);
-  const startNote = 60; // C4 (Middle C)
-  const numOctaves = 2;
+  const startNote = 36; // C2 - Lowered for split hand voicing
+  const numOctaves = 3; // Increased to 3 octaves
   const numWhiteKeys = 7 * numOctaves + 1; // Include the C at the end of the second octave
   const numKeys = 12 * numOctaves + 1;
 
