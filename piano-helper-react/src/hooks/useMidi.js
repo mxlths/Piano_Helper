@@ -271,23 +271,12 @@ function useMidi() {
         return;
     }
 
-    // Call getOutputById only ONCE
-    const outputDevice = WebMidi.getOutputById(selectedOutputId);
+    // Attempt to find the output device manually using .find()
+    const outputDevice = WebMidi.outputs.find(output => output.id === selectedOutputId);
 
-    // --- DEBUG LOGS ---
-    const availableOutputIDs = WebMidi.outputs ? WebMidi.outputs.map(o => `ID: ${o.id} (Type: ${typeof o.id}) Name: ${o.name}`) : ['None available'];
-    log(`[sendMessage] Attempting to send. Selected Output ID: ${selectedOutputId} (Type: ${typeof selectedOutputId})`);
-    log(`[sendMessage] Available Output IDs at this moment: [${availableOutputIDs.join(', ')}]`);
-    // Log the actual result stored in the variable
-    log(`[sendMessage] Result stored in outputDevice variable: ${outputDevice ? 'Object found' : 'null/undefined/falsy'}`); 
-    try {
-        log(`[sendMessage] Stringified outputDevice before 'if': ${JSON.stringify(outputDevice)}`); // Attempt to stringify
-    } catch(e) {
-        log(`[sendMessage] Could not stringify outputDevice. Is it a valid object? Type: ${typeof outputDevice}`);
-    }
-    // --- END DEBUG LOGS ---
+    // --- DEBUG LOGS REMOVED ---
     
-    if (outputDevice) { // Use the stored result
+    if (outputDevice) { // Check if the .find() method returned a device object
       try {
         // Log MIDI Out data in a more readable format if possible (e.g., hex)
         const dataHex = Array.from(data).map(byte => byte.toString(16).padStart(2, '0').toUpperCase()).join(' ');
@@ -297,7 +286,10 @@ function useMidi() {
         log(`Error sending MIDI message: ${error.message}`, 'ERROR');
       }
     } else {
-        log(`Cannot send MIDI message: Output device ${selectedOutputId} not found.`, 'WARN');
+        // Log if .find() failed
+        const availableOutputIDs = WebMidi.outputs ? WebMidi.outputs.map(o => `ID: ${o.id} Name: ${o.name}`) : ['None available'];
+        log(`[sendMessage] .find() failed to locate output device ID: ${selectedOutputId}`, 'WARN');
+        log(`[sendMessage] Available outputs: [${availableOutputIDs.join(', ')}]`, 'WARN');
     }
   }, [log, selectedOutputId]);
 
