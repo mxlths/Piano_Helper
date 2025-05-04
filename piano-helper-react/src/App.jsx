@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Controls from './components/Controls';
 import InfoDisplay from './components/InfoDisplay';
 import MidiMonitorDisplay from './components/MidiMonitorDisplay';
 import PianoKeyboard from './components/PianoKeyboard';
 import useMidi from './hooks/useMidi'; // Import the custom hook
 import useMetronome from './hooks/useMetronome.js'; // Import the metronome hook
+import { Scale, Note } from "@tonaljs/tonal"; // Import Tonal functions
 
 function App() {
   // --- State Management ---
   const [currentMode, setCurrentMode] = useState('scale_display');
-  const [selectedRoot, setSelectedRoot] = useState('C4');
+  const [selectedRoot, setSelectedRoot] = useState('C4'); // Keep octave for root MIDI calc
   const [selectedScaleType, setSelectedScaleType] = useState('major');
-  // TODO: Add state for selectedChordType, displayKeyboardRange, currentNotes, etc.
+  // TODO: Add state for selectedChordType, displayKeyboardRange
   // TODO: Add state for MIDI devices, metronome settings later
 
   // MIDI state and functions from our custom hook
@@ -40,16 +41,34 @@ function App() {
     changeTimeSignature: changeMetronomeTimeSignature,
   } = useMetronome(sendMidiMessage); // Pass the sendMessage function
 
+  // --- Calculated Values ---
+  const rootNoteMidi = useMemo(() => Note.midi(selectedRoot), [selectedRoot]);
+  const notesToHighlight = useMemo(() => {
+    if (!rootNoteMidi) return [];
+    // Tonal expects root without octave for scale generation
+    const rootName = Note.pitchClass(selectedRoot);
+    if (currentMode === 'scale_display' && selectedScaleType) {
+      const scaleNotes = Scale.get(`${rootName} ${selectedScaleType}`).notes;
+      // Map scale notes to midi numbers within a reasonable range (e.g., around the root)
+      // We need to decide how to handle octaves here. For now, let's get MIDI nums in the octave of the root.
+      const rootOctave = Note.octave(selectedRoot);
+      return scaleNotes.map(noteName => Note.midi(`${noteName}${rootOctave}`)).filter(Boolean); // filter out nulls
+    } else if (currentMode === 'chord_display' /* && selectedChordType */) {
+      // TODO: Implement chord logic
+      return [];
+    }
+    return [];
+  }, [selectedRoot, selectedScaleType, currentMode, rootNoteMidi]);
+
   // --- Event Handlers (Placeholder Examples) ---
   const handleRootChange = (newRoot) => {
-    setSelectedRoot(newRoot);
-    // TODO: Recalculate notes
+    // Ensure root has an octave, default to 4 if missing
+    setSelectedRoot(Note.get(newRoot).pc ? Note.get(newRoot).name : 'C4');
   };
 
   const handleScaleChange = (newScale) => {
     setSelectedScaleType(newScale);
     setCurrentMode('scale_display'); // Assuming scale change sets mode
-    // TODO: Recalculate notes
   };
 
   return (
@@ -75,7 +94,11 @@ function App() {
         metronomeTimeSignature={metronomeTimeSignature}
         onChangeMetronomeTimeSignature={changeMetronomeTimeSignature}
       />
-      <PianoKeyboard />
+      <PianoKeyboard
+        rootNote={rootNoteMidi} // Pass MIDI number for root
+        notesToHighlight={notesToHighlight} // Pass array of MIDI numbers
+        // range={{ startNote: 60, numOctaves: 2 }} // Pass range if needed, or keep it internal for now
+      />
       <InfoDisplay 
         selectedRoot={selectedRoot} 
         selectedScaleType={selectedScaleType} 
