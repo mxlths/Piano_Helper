@@ -13,6 +13,7 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@tonaljs/tonal": "^4.10.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "tonal": "^5.0.4",
