@@ -14,8 +14,8 @@ const METRONOME_SOUNDS = {
 const DEFAULT_BPM = 120;
 const DEFAULT_SOUND_NOTE = METRONOME_SOUNDS.HighWoodBlock;
 const MIDI_CHANNEL = 9; // MIDI channels are 0-15, so channel 10 is 9
-const NOTE_ON_CMD = 0x90 | MIDI_CHANNEL;
-const NOTE_OFF_CMD = 0x80 | MIDI_CHANNEL;
+const NOTE_ON_CMD = 0x90 | MIDI_CHANNEL; // Keep for reference, but won't use directly
+const NOTE_OFF_CMD = 0x80 | MIDI_CHANNEL; // Keep for reference, but won't use directly
 const DEFAULT_VELOCITY = 100;
 const NOTE_DURATION_MS = 50; // How long the note 'on' message lasts virtually
 
@@ -52,7 +52,11 @@ function useMetronome(sendMessage) { // Accept sendMessage as a prop/argument
   }, [sendMessage, selectedSoundNote]);
 
   const startMetronome = useCallback(() => {
-    if (isPlaying || !sendMessage) return;
+    // Check if sendMessage exists and is a function, though we won't use it for notes
+    if (isPlaying || typeof sendMessage !== 'function') { 
+        console.warn("Metronome cannot start: isPlaying or sendMessage invalid");
+        return;
+    }
 
     console.log(`Starting metronome: BPM=${bpm}, Sound=${selectedSoundNote}`);
     setIsPlaying(true);
@@ -61,17 +65,43 @@ function useMetronome(sendMessage) { // Accept sendMessage as a prop/argument
     const intervalMs = (60 / bpm) * 1000;
 
     intervalRef.current = setInterval(() => {
-      // Send Note On
+      // Send Note On using WebMidi helper
       try {
-          console.log(`Sending Note On: ${selectedSoundNote}`);
-          sendMessage([NOTE_ON_CMD, selectedSoundNote, DEFAULT_VELOCITY]);
+          console.log(`Sending Note On: ${selectedSoundNote} via helper`);
+          // Assuming sendMessage implicitly provides access to the outputDevice
+          // This is a potential issue - useMetronome doesn't have direct access 
+          // to the outputDevice object from useMidi.
+          // We need to pass the outputDevice or use a context/different approach.
+          
+          // *** TEMPORARY WORKAROUND: Use raw send for now, need to refactor ***
+          //sendMessage([NOTE_ON_CMD, selectedSoundNote, DEFAULT_VELOCITY]);
+          
+          // Use correct signature for WebMidi.js send(status, [data1, data2], timestamp)
+          sendMessage(NOTE_ON_CMD, [selectedSoundNote, DEFAULT_VELOCITY]);
 
-          // Schedule Note Off
+          // Schedule Note Off using raw send with correct signature
           timeoutRef.current = setTimeout(() => {
-              console.log(`Sending Note Off: ${selectedSoundNote}`);
-              sendMessage([NOTE_OFF_CMD, selectedSoundNote, 0]); // Velocity 0 for Note Off
+              console.log(`Sending Note Off: ${selectedSoundNote} via raw`);
+              //sendMessage([NOTE_OFF_CMD, selectedSoundNote, 0]); // Velocity 0 for Note Off
+              sendMessage(NOTE_OFF_CMD, [selectedSoundNote, 0]);
               timeoutRef.current = null;
           }, NOTE_DURATION_MS);
+
+          /* // --- IDEAL WebMidi.js v3 way (requires refactor) ---
+           const outputDevice = WebMidi.getOutputById(selectedOutputId); // Need selectedOutputId here
+           if (outputDevice) {
+                const targetChannel = outputDevice.channels[MIDI_CHANNEL + 1];
+                console.log(`Sending Note On: ${selectedSoundNote} via helper to Ch ${MIDI_CHANNEL + 1}`);
+                targetChannel.playNote(selectedSoundNote, { 
+                    rawVelocity: true, 
+                    velocity: DEFAULT_VELOCITY,
+                    duration: NOTE_DURATION_MS 
+                });
+            } else {
+                 console.error('Metronome: Output device not found when trying to play note.');
+                 stopMetronome();
+            }
+           */
 
       } catch (error) {
           console.error('Error sending metronome MIDI message:', error);

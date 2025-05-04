@@ -265,7 +265,7 @@ function useMidi() {
   }, [log, selectedOutputId]);
 
   // --- Message Sending ---
-  const sendMessage = useCallback((data) => {
+  const sendMessage = useCallback((status, data = []) => {
     if (selectedOutputId === null) { // Check for null explicitly
         log("Cannot send MIDI message: No output selected.", 'WARN');
         return;
@@ -274,14 +274,13 @@ function useMidi() {
     // Attempt to find the output device manually using .find() with explicit Number conversion
     const outputDevice = WebMidi.outputs.find(output => Number(output.id) === Number(selectedOutputId));
 
-    // --- DEBUG LOGS REMOVED ---
-    
     if (outputDevice) { // Check if the .find() method returned a device object
       try {
-        // Log MIDI Out data in a more readable format if possible (e.g., hex)
-        const dataHex = Array.from(data).map(byte => byte.toString(16).padStart(2, '0').toUpperCase()).join(' ');
-        log(`MIDI Out: [${dataHex}] to ${outputDevice.name}`); // Log raw data being sent
-        outputDevice.send(data);
+        // Log MIDI Out data in a more readable format
+        const dataBytesHex = Array.from(data).map(byte => byte.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+        const statusHex = status.toString(16).toUpperCase();
+        log(`MIDI Out: Status=0x${statusHex} Data=[${dataBytesHex}] to ${outputDevice.name}`); 
+        outputDevice.send(status, data); // Pass status and data separately
       } catch (error) {
         log(`Error sending MIDI message: ${error.message}`, 'ERROR');
       }
