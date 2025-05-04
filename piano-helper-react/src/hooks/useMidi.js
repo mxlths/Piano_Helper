@@ -105,7 +105,14 @@ function useMidi() {
     // This handles cases where WebMidi might be disabled between renders (e.g., by StrictMode)
     if (isInitialized && WebMidi.enabled) { 
         const handleDeviceChange = (e) => {
-            log(`Device ${e.type}: ${e.port.name} (${e.port.type})`);
+            // Log the raw port object via the on-screen logger
+            try {
+                log(`Device ${e.type}: Port Object: ${JSON.stringify(e.port)}`); 
+            } catch (error) {
+                 log(`Device ${e.type}: Port Object could not be stringified.`, 'WARN');
+            }
+            // Original log kept for context
+            log(`Device ${e.type}: ${e.port?.name || 'undefined'} (${e.port?.type || 'undefined'})`); 
             updateDeviceLists();
         };
 
@@ -203,6 +210,12 @@ function useMidi() {
       // Log available inputs right before trying to get by ID
       const availableInputIds = WebMidi.inputs ? WebMidi.inputs.map(i => i.id) : [];
       log(`Trying to find input ID: ${id}. Available input IDs: [${availableInputIds.join(', ')}]`);
+      // Log the full inputs array structure to the on-screen logger
+      try {
+          log(`WebMidi.inputs before find: ${JSON.stringify(WebMidi.inputs)}`);
+      } catch (error) {
+          log('WebMidi.inputs could not be stringified.', 'WARN');
+      }
       
       // If inputs array looks okay, try finding immediately first
       let inputDevice = null;
@@ -217,7 +230,7 @@ function useMidi() {
         selectedInputRef.current = inputDevice; // Store reference
       } else {
         // If not found immediately (or inputs was empty), try getInputById after a tiny delay
-        log(`Device not found immediately with .find(). Trying getInputById after 10ms delay...`);
+        log(`Device not found immediately with .find(). Trying getInputById after 100ms delay...`);
         setTimeout(() => {
             const delayedInputDevice = WebMidi.getInputById(id);
             if (delayedInputDevice) {
@@ -228,7 +241,7 @@ function useMidi() {
             } else {
                 log(`Could not find input device with ID: ${id} even after delay.`, 'ERROR');
             }
-        }, 10); // 10ms delay - adjust if necessary
+        }, 100); // Increased delay to 100ms 
       }
     } else {
         log("Input deselected.");
