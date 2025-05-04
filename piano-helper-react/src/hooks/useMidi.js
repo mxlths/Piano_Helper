@@ -233,8 +233,10 @@ function useMidi() {
       // Simplify: ONLY use .find() to locate the device
       let inputDevice = null;
       if (WebMidi.inputs && WebMidi.inputs.length > 0) {
-          log(`Attempting to find input via WebMidi.inputs.find()...`);
-          inputDevice = WebMidi.inputs.find(input => input.id === id);
+          log(`Attempting to find input via WebMidi.inputs.find() comparing as strings...`);
+          // Force comparison as strings to avoid potential type issues
+          const targetIdString = String(id);
+          inputDevice = WebMidi.inputs.find(input => String(input.id) === targetIdString);
       }
 
       if (inputDevice) {
