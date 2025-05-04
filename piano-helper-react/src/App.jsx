@@ -5,7 +5,7 @@ import MidiMonitorDisplay from './components/MidiMonitorDisplay';
 import PianoKeyboard from './components/PianoKeyboard';
 import useMidi from './hooks/useMidi'; // Import the custom hook
 import useMetronome from './hooks/useMetronome.js'; // Import the metronome hook
-import { Scale, Note, Chord, ScaleType, ChordType, PcSet } from "@tonaljs/tonal"; // Import Tonal functions
+import { Scale, Note, Chord, ScaleType, ChordType, PcSet, Interval } from "@tonaljs/tonal"; // Import Tonal functions and Interval
 
 console.log("Tonal PcSet object:", PcSet); // <-- Add log for PcSet object
 
@@ -84,69 +84,89 @@ function App() {
   }, [scaleName]);
 
   const notesToHighlight = useMemo(() => {
-    if (!rootNoteMidi) return [];
-
-    const rootName = selectedRootNote; // Use state directly
+    let calculatedNotes = [];
     const octave = selectedOctave;
+    const rootName = selectedRootNote;
 
     try {
       if (currentMode === 'scale_display' && selectedScaleType) {
-        const scaleData = Scale.get(`${rootName} ${selectedScaleType}`);
-        if (!scaleData || !scaleData.notes) return [];
-        // Get notes in the selected octave and the one above for better visualization range
-        const notesInOctave = scaleData.notes.map(noteName => Note.midi(`${noteName}${octave}`)).filter(Boolean);
-        const notesInNextOctave = scaleData.notes.map(noteName => Note.midi(`${noteName}${octave + 1}`)).filter(Boolean);
-        return [...notesInOctave, ...notesInNextOctave];
-      } else if (currentMode === 'chord_display' && selectedChordType) {
-        const chordData = Chord.get(`${rootName}${selectedChordType}`); // Tonal needs root+type
-         if (!chordData || !chordData.notes) return [];
-         // Get chord notes starting from the selected root octave
-         return Chord.getChord(selectedChordType, `${rootName}${octave}`).notes.map(Note.midi).filter(Boolean);
+        const scaleData = Scale.get(scaleName); // Use calculated scaleName
+        if (scaleData && Array.isArray(scaleData.notes)) {
+          const notesInOctave = scaleData.notes.map(noteName => Note.midi(`${noteName}${octave}`)).filter(Boolean);
+          const notesInNextOctave = scaleData.notes.map(noteName => Note.midi(`${noteName}${octave + 1}`)).filter(Boolean);
+          calculatedNotes = [...notesInOctave, ...notesInNextOctave];
+        }
+      } else if (currentMode === 'chord_search' && selectedChordType) {
+         if (!rootNoteMidi) return [];
+         const chordData = Chord.getChord(selectedChordType, `${rootName}${octave}`); // Use getChord for root+octave
+         if (chordData && Array.isArray(chordData.notes)) {
+           calculatedNotes = chordData.notes.map(Note.midi).filter(Boolean);
+         }
       } else if (currentMode === 'diatonic_chords') {
-        if (!rootNoteMidi || diatonicChordNames.length === 0) return [];
+        if (diatonicChordNames.length === 0) return [];
 
-        try {
-          const degreeIndex = selectedDiatonicDegree;
-          let chordName = diatonicChordNames[degreeIndex];
-          if (!chordName) return [];
+        const degreeIndex = selectedDiatonicDegree;
+        // Get the base diatonic chord name (triad)
+        let baseChordName = diatonicChordNames[degreeIndex]; 
+        if (!baseChordName) return [];
 
-          // TODO: Handle 'showSevenths' toggle - perhaps switch to Scale.modeChords?
-          // For now, uses triads from Scale.scaleChords
+        // Determine the actual chord name (triad or seventh)
+        let targetChordName = baseChordName;
+        if (showSevenths) {
+            // Construct the 7th chord name. Tonal expects scale name for modeChords
+            const seventhChords = Scale.modeChords(scaleName); 
+            if (Array.isArray(seventhChords) && seventhChords[degreeIndex]) {
+                targetChordName = seventhChords[degreeIndex];
+            } else {
+                 // Fallback or error handling if 7th chord name not found
+                 console.warn(`Could not determine 7th chord for degree ${degreeIndex} of ${scaleName}`);
+                 // Optionally fall back to triad?
+            }
+        }
+        
+        // Find the root note of this specific diatonic chord
+        const intervals = Scale.get(scaleName).intervals;
+        const chordRootName = Note.transpose(rootName, intervals[degreeIndex]);
+        const chordRootWithOctave = `${chordRootName}${octave}`;
+        const chordRootMidi = Note.midi(chordRootWithOctave);
+        if (!chordRootMidi) return [];
 
-          // Get chord notes based on the calculated name and selected octave
-          let chordNotes = Chord.getChord(chordName.includes('7') ? chordName : chordName, `${selectedRootNote}${selectedOctave}`, selectedRootNote).notes; // Chord.getChord requires rootNote
-          if (!Array.isArray(chordNotes) || chordNotes.length === 0) return [];
+        // Get the notes of the target chord (triad or seventh) starting at the correct octave
+        const chordData = Chord.getChord(targetChordName, chordRootWithOctave);
+        if (!chordData || !Array.isArray(chordData.notes) || chordData.notes.length === 0) return [];
 
-          let midiNotes = chordNotes.map(Note.midi).filter(Boolean);
-          if (midiNotes.length === 0) return [];
+        let chordNotes = chordData.notes; // Note names with correct octave
 
-          // TODO: Apply RH Inversion (rhInversion state)
-          // Need manual inversion logic here
+        // Apply RH Inversion
+        if (rhInversion > 0 && rhInversion < chordNotes.length) {
+            // Simple cyclic permutation for inversion
+            const inversionSlice = chordNotes.slice(0, rhInversion);
+            const remainingSlice = chordNotes.slice(rhInversion);
+            // Transpose the moved notes up an octave
+            const invertedNotes = inversionSlice.map(n => Note.transpose(n, '8P')); 
+            chordNotes = [...remainingSlice, ...invertedNotes];
+        }
+        
+        let midiNotes = chordNotes.map(Note.midi).filter(Boolean);
+        if (midiNotes.length === 0) return [];
 
-          // Apply Split Hand Voicing
-          if (splitHandVoicing) {
-            const lhNote = rootNoteMidi - 24; // 2 octaves below ROOT of the current chord
-            // We need the root of the *selected diatonic chord*, not the scale root.
-            const chordRootMidi = Note.midi(Note.transpose(selectedRootWithOctave, Scale.get(scaleName).intervals[degreeIndex]));
-            const actualLhNote = chordRootMidi - 24;
-
-            // Adjust RH notes based on selectedOctave? (Already done by Chord.getChord with root+octave)
-            const rhNotes = midiNotes; // Use the (inverted) midi notes
-            return [actualLhNote, ...rhNotes].filter(n => n !== null && n >= 0 && n <= 127);
-          } else {
-            return midiNotes.filter(n => n !== null && n >= 0 && n <= 127);
-          }
-        } catch (error) {
-          console.error("Error calculating diatonic chord notes:", error);
-          return [];
+        // Apply Split Hand Voicing
+        if (splitHandVoicing) {
+          const actualLhNote = chordRootMidi - 24; // 2 octaves below the chord root
+          calculatedNotes = [actualLhNote, ...midiNotes];
+        } else {
+          calculatedNotes = midiNotes;
         }
       }
     } catch (error) {
-        console.error("Error calculating notes:", error);
-        return []; // Return empty array on error
+      console.error("Error calculating notes:", error);
+      calculatedNotes = []; // Return empty array on error
     }
-    return [];
-  }, [selectedRootNote, selectedOctave, selectedScaleType, selectedChordType, currentMode, rootNoteMidi, diatonicChordNames, selectedDiatonicDegree, showSevenths, splitHandVoicing, rhInversion]);
+
+    // Filter final notes
+    return calculatedNotes.filter(n => n !== null && n >= 0 && n <= 127);
+
+  }, [currentMode, selectedRootNote, selectedOctave, selectedScaleType, selectedChordType, rootNoteMidi, scaleName, diatonicChordNames, selectedDiatonicDegree, showSevenths, splitHandVoicing, rhInversion]);
 
   // --- Event Handlers ---
   const handleModeChange = (newMode) => {
