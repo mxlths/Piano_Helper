@@ -1,6 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 // Try default import for webmidi v2.x
 import WebMidi from 'webmidi'; 
+import MusicLogic from '../musicLogic'; // Import for note name conversion
+
+// Instantiate the logic class once - consider moving if hook is used multiple times
+// For now, it's okay here as App uses the hook once.
+const musicLogic = new MusicLogic(); 
 
 /**
  * Custom Hook to manage WebMIDI API interactions.
@@ -12,6 +17,9 @@ function useMidi() {
   const [selectedInputId, setSelectedInputId] = useState(null);
   const [selectedOutputId, setSelectedOutputId] = useState(null);
   const [logMessages, setLogMessages] = useState(['MIDI Hook Initialized...']); // State for logs
+  
+  // Ref to store the currently selected WebMidi Input object
+  const selectedInputRef = useRef(null); 
 
   // Internal logger function
   const log = useCallback((message, level = 'INFO') => {
@@ -40,8 +48,17 @@ function useMidi() {
     setInputs(currentInputs);
     setOutputs(currentOutputs);
     log(`Found ${currentInputs.length} inputs, ${currentOutputs.length} outputs.`);
-    // TODO: Check if selected device disconnected
-  }, [log]);
+    // Check if selected input disconnected
+    if (selectedInputId && !currentInputs.find(i => i.id === selectedInputId)) {
+        log(`Selected input ${selectedInputId} disconnected. Deselecting.`, 'WARN');
+        selectInput(null); // Call selectInput to handle deselection logic
+    }
+    // Check if selected output disconnected
+    if (selectedOutputId && !currentOutputs.find(o => o.id === selectedOutputId)) {
+        log(`Selected output ${selectedOutputId} disconnected. Deselecting.`, 'WARN');
+        selectOutput(null); // Call selectOutput to handle deselection logic
+    }
+  }, [log, selectedInputId, selectedOutputId]);
 
   // Effect for initializing WebMidi
   useEffect(() => {
@@ -99,35 +116,114 @@ function useMidi() {
     } 
   }, [isInitialized, log, updateDeviceLists]); // Re-run if initialization status changes
 
+  // --- Incoming Message Handler ---
+  const handleIncomingMidiMessage = useCallback((event) => {
+    const data = event.data; // Uint8Array
+    if (!data || data.length === 0) return;
+
+    const rawBytesString = Array.from(data).map(byte => byte.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+    
+    const statusByte = data[0];
+    const command = statusByte >> 4;
+    const channel = statusByte & 0xf;
+    const data1 = data.length > 1 ? data[1] : null;
+    const data2 = data.length > 2 ? data[2] : 0;
+
+    let messageString = '';
+    try {
+        if (command === 9 && data2 > 0) {
+            const noteName = musicLogic.midiToNoteName(data1);
+            messageString = `Note On  (Ch ${channel}): ${noteName} Vel: ${data2}`;
+        } else if (command === 8 || (command === 9 && data2 === 0)) {
+            const noteName = musicLogic.midiToNoteName(data1);
+            messageString = `Note Off (Ch ${channel}): ${noteName} Vel: ${data2}`;
+        } else if (command === 11) {
+            messageString = `CC       (Ch ${channel}): Ctrl ${data1} Val: ${data2}`;
+        } else if (command === 14) {
+            const pitchValue = (data2 << 7) | data1;
+            messageString = `Pitch Bend (Ch ${channel}): Val ${pitchValue}`;
+        } else if (command === 10) {
+            const noteName = musicLogic.midiToNoteName(data1);
+            messageString = `Poly AT  (Ch ${channel}): ${noteName} Pressure: ${data2}`;
+        } else if (command === 13) {
+             messageString = `Channel AT (Ch ${channel}): Pressure: ${data1}`;
+        } else if (statusByte === 0xF8) { // Timing Clock
+            messageString = `Timing Clock (0xF8)`;
+             // Optionally filter these out from the log
+             // return;
+        } else if (statusByte === 0xFA) { // Start
+            messageString = `Start (0xFA)`;
+        } else if (statusByte === 0xFC) { // Stop
+            messageString = `Stop (0xFC)`;
+        } else if (statusByte === 0xFE) { // Active Sensing
+             messageString = `Active Sensing (0xFE)`;
+             // Optionally filter these out
+             // return;
+        } else {
+            messageString = `[RAW] ${rawBytesString}`;
+        }
+    } catch (e) {
+        log(`Error parsing MIDI: ${e.message}`, 'ERROR');
+        messageString = `[PARSE ERROR] ${rawBytesString}`;
+    }
+
+    log(`MIDI In: ${messageString}`); // Log the parsed message
+
+  }, [log]); // Depends on log function
+
   // --- Device Selection --- 
   const selectInput = useCallback((id) => {
-    // Check if selection actually changed
     if (id === selectedInputId) return;
 
-    log(`Selecting input: ${id || 'None'}`);
-    // TODO: Detach listener from previous input if selectedInputId was not null
+    // Remove listener from previous input
+    if (selectedInputRef.current) {
+      log(`Removing listener from previous input: ${selectedInputRef.current.name}`);
+      selectedInputRef.current.removeListener('midimessage', 'all', handleIncomingMidiMessage);
+      selectedInputRef.current = null;
+    }
+
     setSelectedInputId(id);
-    // TODO: Attach listener to new input if id is not null
-  }, [log, selectedInputId]); // Add selectedInputId to dependency array
+
+    // Add listener to new input
+    if (id) {
+      const inputDevice = WebMidi.getInputById(id);
+      if (inputDevice) {
+        log(`Adding listener to new input: ${inputDevice.name}`);
+        inputDevice.addListener('midimessage', 'all', handleIncomingMidiMessage);
+        selectedInputRef.current = inputDevice; // Store reference to the selected device
+      } else {
+        log(`Could not find input device with ID: ${id}`, 'ERROR');
+      }
+    } else {
+        log("Input deselected.");
+    }
+  }, [log, selectedInputId, handleIncomingMidiMessage]); // Dependencies
 
   const selectOutput = useCallback((id) => {
-    // Check if selection actually changed
     if (id === selectedOutputId) return;
-
     log(`Selecting output: ${id || 'None'}`);
-    // TODO: Get the WebMidi Output object and store it maybe?
+    // Store the ID. We don't need the object unless sending messages.
     setSelectedOutputId(id);
-  }, [log, selectedOutputId]); // Add selectedOutputId to dependency array
+  }, [log, selectedOutputId]);
 
-  // --- Message Sending --- (Placeholder)
+  // --- Message Sending ---
   const sendMessage = useCallback((data) => {
-    log(`Attempting to send message: ${data}`);
-    // TODO: Add logic to send message via selectedOutput
-  }, [log/*, selectedOutputId */]); // Dependency will change
-
-  // --- Incoming Message Handling --- (Placeholder)
-  // TODO: Need to manage the listener added in selectInput
-
+    if (!selectedOutputId) {
+        log("Cannot send MIDI message: No output selected.", 'WARN');
+        return;
+    }
+    const outputDevice = WebMidi.getOutputById(selectedOutputId);
+    if (outputDevice) {
+      try {
+        log(`MIDI Out: ${data}`); // Log raw data being sent
+        outputDevice.send(data);
+      } catch (error) {
+        log(`Error sending MIDI message: ${error.message}`, 'ERROR');
+      }
+    } else {
+        log(`Cannot send MIDI message: Output device ${selectedOutputId} not found.`, 'WARN');
+    }
+  }, [log, selectedOutputId]);
 
   // Return state and functions needed by components
   return {
