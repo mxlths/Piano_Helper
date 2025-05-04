@@ -54,8 +54,13 @@ async function setup() {
     const initialScaleData = musicLogic.getScale(appState.selectedRoot, appState.selectedScaleType);
     appState.currentScaleNotes = initialScaleData ? initialScaleData.notes : [];
     appState.rootMidi = initialScaleData ? initialScaleData.rootMidi : null;
-    metronomeEngine = new MetronomeEngine(appState.metronome.bpm, 4, appState.metronome.accentType);
     midiHandler = new MidiHandler();
+    metronomeEngine = new MetronomeEngine(
+        appState.metronome.bpm, 
+        4, // initialBeats (not really used now)
+        appState.metronome.accentType,
+        midiHandler // Pass the handler instance
+    );
     // trackPlayer = new TrackPlayer();
     // uiManager = new UIManager();
 

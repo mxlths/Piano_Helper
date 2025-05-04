@@ -1,11 +1,14 @@
 class MetronomeEngine {
-    constructor(initialBpm = 120, initialBeats = 4, initialAccent = 'none') {
+    constructor(initialBpm = 120, initialBeats = 4, initialAccent = 'none', midiHandlerInstance = null) {
         this.bpm = initialBpm;
         this.accentType = initialAccent; // 'none', '4/4', '3/4'
         this.beatsPerMeasure = this._getBeatsFromAccent(this.accentType);
         this.currentBeat = 0;
         this.isPlaying = false;
         this.intervalID = null;
+
+        // MIDI Handler Reference
+        this.midiHandler = midiHandlerInstance; // Store the handler
 
         // Sound Generation
         this.normalFreq = 880; // A5
@@ -14,6 +17,13 @@ class MetronomeEngine {
         this.osc.freq(this.normalFreq);
         this.osc.amp(0);    // Start silent
         this.osc.start();   // Start the oscillator, but silent
+
+        // MIDI Note Settings (Example: C5 for now)
+        this.midiNote = 72;
+        this.midiVelocity = 100;
+        this.midiAccentVelocity = 120;
+        this.midiChannel = 0; // Channel 1 (index 0)
+        this.midiNoteDuration = 50; // ms
 
         console.log("MetronomeEngine module initialized");
     }
@@ -92,19 +102,32 @@ class MetronomeEngine {
         }
         // console.log(`Tick! Beat: ${this.currentBeat}`);
 
-        // Determine frequency based on accent
+        // --- Sound Output ---
         let freqToUse = this.normalFreq;
-        if (this.beatsPerMeasure > 0 && this.currentBeat === 1) {
+        let isDownbeat = (this.beatsPerMeasure > 0 && this.currentBeat === 1);
+        if (isDownbeat) {
              freqToUse = this.accentFreq;
         }
         this.osc.freq(freqToUse); 
-
-        // Play a short sound pulse
         this.osc.amp(0.5, 0.01); // Attack
         this.osc.amp(0, 0.05, 0.02); // Decay after short delay
         
-        // Reset freq slightly after sound plays if it was accent (optional, maybe cleaner)
-        // setTimeout(() => { if (freqToUse === this.accentFreq) this.osc.freq(this.normalFreq); }, 50);
+        // --- MIDI Output ---
+        if (this.midiHandler && this.midiHandler.selectedOutput) {
+            const velocity = isDownbeat ? this.midiAccentVelocity : this.midiVelocity;
+            const note = this.midiNote;
+            const channel = this.midiChannel;
+
+            // Send Note On
+            this.midiHandler.sendNoteOn(note, velocity, channel);
+            console.log(`MIDI Tick: Note On ${note} Vel ${velocity} Ch ${channel}`);
+
+            // Schedule Note Off
+            setTimeout(() => {
+                this.midiHandler.sendNoteOff(note, 0, channel);
+                 // console.log(`MIDI Tick: Note Off ${note} Ch ${channel}`);
+            }, this.midiNoteDuration);
+        }
 
         // TODO: Send MIDI message via MidiHandler (consider velocity for accent)
     }
