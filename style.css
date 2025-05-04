@@ -45,4 +45,13 @@ button, select {
     overflow-y: scroll; /* Add scrollbar if content overflows */
     white-space: pre-wrap; /* Preserve whitespace formatting */
     z-index: 100; /* Ensure it stays on top */
+}
+
+#version-display {
+    position: fixed;
+    top: 5px;
+    left: 5px;
+    font-size: 10px;
+    color: #888;
+    z-index: 101; /* Above MIDI monitor */
 } 

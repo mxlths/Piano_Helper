@@ -15,6 +15,9 @@ let midiMonitorDiv; // MIDI Monitor Display
 let midiInputSelect, midiOutputSelect; // Device selectors
 let midiRefreshButton; // Refresh button
 
+// App Version
+const APP_VERSION = "0.0.1";
+
 // MIDI Log State
 const MAX_MIDI_LOG_LINES = 15; 
 let midiLogMessages = []; 
@@ -105,6 +108,12 @@ function draw() {
 function initializeUI() {
     const controlsDiv = select('#controls');
     controlsDiv.html(''); 
+
+    // --- Version Display ---
+    const versionDiv = select('#version-display');
+    if (versionDiv) {
+        versionDiv.html(`v${APP_VERSION}`);
+    }
 
     // --- Metronome Controls --- 
     // Start/Stop Button
