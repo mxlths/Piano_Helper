@@ -225,7 +225,9 @@ function App() {
       splitHandInterval,
       rhInversion,
       playedNoteEvent: latestNoteOn, // <-- Pass latestNoteOn event here
-      calculatedDiatonicChordNotes // <-- Pass pre-calculated chord notes
+      calculatedDiatonicChordNotes, // <-- Pass pre-calculated chord notes
+      selectedRootNote, // <-- Add missing prop
+      ROOT_NOTES // <-- Pass the ROOT_NOTES constant
   });
 
   // Metronome state and functions

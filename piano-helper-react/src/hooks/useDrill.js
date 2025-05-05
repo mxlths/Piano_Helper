@@ -18,7 +18,8 @@ function useDrill({
     rhInversion,
     playedNoteEvent, // <-- New prop to receive latestNoteOn event
     calculatedDiatonicChordNotes, // <-- New prop with pre-calculated notes
-    selectedRootNote // <-- Need root note for chord search generation
+    selectedRootNote, // <-- Need root note for chord search generation
+    ROOT_NOTES // <-- Add ROOT_NOTES prop
 }) {
 
     // Internal state for the hook (to be expanded)
@@ -73,47 +74,66 @@ function useDrill({
                 }));
 
             } else if (currentMode === 'chord_search') {
-                // --- Chord Search Drill Generation ---
-                console.log("useDrill: Generating sequence for Chord Search mode...");
+                // --- Chord Search Drill Generation (Iterating through Roots) ---
+                console.log("useDrill: Generating sequence for Chord Search mode (all roots)...");
                 const { repetitions = 1 } = drillOptions;
-                const rootWithOctave = `${selectedRootNote}${selectedOctave}`;
-                let targetChordNotes = [];
+                const chordSteps = []; // Array to hold the steps for each root
 
-                try {
-                    const chordData = Chord.getChord(selectedChordType, rootWithOctave);
-                    if (chordData.empty || !Array.isArray(chordData.notes) || chordData.notes.length === 0) {
-                        console.warn(`useDrill: Could not get valid notes for chord ${selectedChordType} at ${rootWithOctave}`);
-                        setDrillSequence([]); return;
-                    }
-                    
-                    let chordNotes = chordData.notes; // Note names with correct octave
-
-                    // Apply RH Inversion (similar to App.jsx)
-                    if (rhInversion > 0 && rhInversion < chordNotes.length) {
-                        const inversionSlice = chordNotes.slice(0, rhInversion);
-                        const remainingSlice = chordNotes.slice(rhInversion);
-                        const invertedNotes = inversionSlice.map(n => Note.transpose(n, '8P'));
-                        chordNotes = [...remainingSlice, ...invertedNotes];
-                    }
-
-                    targetChordNotes = chordNotes.map(Note.midi).filter(Boolean).sort((a,b) => a-b);
-
-                    if (targetChordNotes.length === 0) {
-                         console.warn(`useDrill: No valid MIDI notes after inversion/conversion for ${selectedChordType} at ${rootWithOctave}`);
-                         setDrillSequence([]); return;
-                    }
-
-                } catch (error) {
-                    console.error(`useDrill: Error getting chord notes for ${selectedChordType} at ${rootWithOctave}:`, error);
+                if (!ROOT_NOTES || ROOT_NOTES.length === 0) {
+                    console.error("useDrill: ROOT_NOTES array is missing or empty.");
+                    setDrillSequence([]); return;
+                }
+                if (!selectedChordType) {
+                     console.error("useDrill: selectedChordType is missing.");
                      setDrillSequence([]); return;
                 }
-                
-                const step = {
-                    expectedMidiNotes: targetChordNotes,
-                    type: 'chord_search_target'
-                };
 
-                generatedSequence = Array(repetitions).fill(step); // Repeat the same chord step
+                for (const root of ROOT_NOTES) {
+                    const rootWithOctave = `${root}${selectedOctave}`;
+                    let targetChordNotes = [];
+
+                    try {
+                        const chordData = Chord.getChord(selectedChordType, rootWithOctave);
+                        if (chordData.empty || !Array.isArray(chordData.notes) || chordData.notes.length === 0) {
+                            console.warn(`useDrill: Could not get valid notes for chord ${selectedChordType} at ${rootWithOctave}`);
+                            continue; // Skip this root if chord data is invalid
+                        }
+                        
+                        let chordNotes = chordData.notes; // Note names with correct octave
+
+                        // Apply RH Inversion (same logic as before)
+                        if (rhInversion > 0 && rhInversion < chordNotes.length) {
+                            const inversionSlice = chordNotes.slice(0, rhInversion);
+                            const remainingSlice = chordNotes.slice(rhInversion);
+                            const invertedNotes = inversionSlice.map(n => Note.transpose(n, '8P'));
+                            chordNotes = [...remainingSlice, ...invertedNotes];
+                        }
+
+                        targetChordNotes = chordNotes.map(Note.midi).filter(Boolean).sort((a,b) => a-b);
+
+                        if (targetChordNotes.length === 0) {
+                             console.warn(`useDrill: No valid MIDI notes after inversion/conversion for ${selectedChordType} at ${rootWithOctave}`);
+                             continue; // Skip this root
+                        }
+
+                         // Add the step for this root's chord
+                         chordSteps.push({
+                            expectedMidiNotes: targetChordNotes,
+                            type: 'chord_search_target',
+                            rootNote: root // Store the root note for potential display
+                         });
+
+                    } catch (error) {
+                        console.error(`useDrill: Error getting chord notes for ${selectedChordType} at ${rootWithOctave}:`, error);
+                         continue; // Skip this root on error
+                    }
+                }
+
+                // Apply repetitions to the entire sequence of roots
+                generatedSequence = [];
+                for (let i = 0; i < repetitions; i++) {
+                    generatedSequence.push(...chordSteps);
+                }
 
             } else if (currentMode === 'diatonic_chords') {
                 // --- Diatonic Chord Drill Generation ---
@@ -160,7 +180,8 @@ function useDrill({
         selectedChordType, diatonicTriads, diatonicSevenths, 
         showSevenths, splitHandVoicing, splitHandInterval, rhInversion,
         calculatedDiatonicChordNotes, // <-- Add new prop to dependencies
-        selectedRootNote // <-- Need root note for chord search generation
+        selectedRootNote, // <-- Need root note for chord search generation
+        ROOT_NOTES // <-- Add ROOT_NOTES to dependency array
     ]);
 
     // --- REMOVED processMidiInput function ---
