@@ -79,10 +79,36 @@ function useDrill({
                 } else if (style === 'random') {
                     orderedMidiNotes = shuffleArray(orderedMidiNotes);
                 } else if (style === 'thirds') {
-                    // TODO: Implement specific logic for playing scale notes IN thirds (1,3,2,4,3,5...)
-                    // For now, treat as ascending
-                    orderedMidiNotes.sort((a, b) => a - b);
-                    console.warn("useDrill: 'Thirds' style for scales not fully implemented yet.");
+                    // --- Thirds Style Implementation ---
+                    const scaleNotes = scaleData.notes;
+                    const numNotes = scaleNotes.length;
+                    const thirdsSequenceMidi = [];
+
+                    if (numNotes > 0) {
+                        for (let oct = 0; oct < octaves; oct++) {
+                            const currentOctave = selectedOctave + oct;
+                            for (let i = 0; i < numNotes; i++) {
+                                const note1Name = scaleNotes[i];
+                                const note2Index = (i + 2) % numNotes;
+                                const note2Name = scaleNotes[note2Index];
+
+                                // Determine octave for the second note (handle wrap-around)
+                                const note2Octave = note2Index < i ? currentOctave + 1 : currentOctave;
+
+                                const note1Midi = Note.midi(`${note1Name}${currentOctave}`);
+                                const note2Midi = Note.midi(`${note2Name}${note2Octave}`);
+
+                                if (note1Midi !== null) {
+                                    thirdsSequenceMidi.push(note1Midi);
+                                }
+                                if (note2Midi !== null) {
+                                    thirdsSequenceMidi.push(note2Midi);
+                                }
+                            }
+                        }
+                    }
+                    orderedMidiNotes = thirdsSequenceMidi;
+                    // --- End Thirds Style --- 
                 }
                 // --- End Style --- 
 
@@ -183,29 +209,28 @@ function useDrill({
                 // --- End Repetitions ---
 
             } else if (currentMode === 'diatonic_chords') {
-                // --- Diatonic Chord Drill Generation (Iterating through Degrees & Octaves) ---
+                // --- Diatonic Chord Drill Generation (Iterating through Octaves then Degrees) ---
                 const { octaves = 1, repetitions = 1, style = 'ascending' } = drillOptions; // Get octaves/repetitions
                 const chordSteps = []; // Holds steps for each degree/octave combo
 
                 if (!calculatedDiatonicChordNotes || calculatedDiatonicChordNotes.length === 0) {
-                    // Allow empty array if calculation failed gracefully, but check length > 0
                     console.warn(`useDrill: Invalid or empty pre-calculated diatonic chord notes received.`);
                     setDrillSequence([]); return;
                 }
 
-                // Iterate through each degree's base chord notes (already calculated in App.jsx)
-                calculatedDiatonicChordNotes.forEach((baseChordMidiNotes, degreeIndex) => {
-                    if (!baseChordMidiNotes || baseChordMidiNotes.length === 0) {
-                        console.warn(`useDrill: Skipping degree ${degreeIndex + 1} due to missing/empty notes.`);
-                        return; // Skip this degree if notes are invalid/empty
-                    }
+                // Iterate through OCTAVES first
+                for (let octaveIndex = 0; octaveIndex < octaves; octaveIndex++) {
+                     const octaveShift = 12 * octaveIndex; // Semitones to shift up for this octave
 
-                    // --- Octave Loop --- 
-                    // Generate steps for this degree's chord across the specified octave range
-                    for (let octaveIndex = 0; octaveIndex < octaves; octaveIndex++) {
-                         const octaveShift = 12 * octaveIndex; // Semitones to shift up
-                         const octaveChordNotes = baseChordMidiNotes.map(n => n + octaveShift);
-                         
+                    // Iterate through each degree's base chord notes WITHIN the current octave
+                    calculatedDiatonicChordNotes.forEach((baseChordMidiNotes, degreeIndex) => {
+                        if (!baseChordMidiNotes || baseChordMidiNotes.length === 0) {
+                            console.warn(`useDrill: Skipping degree ${degreeIndex + 1} in octave ${octaveIndex + 1} due to missing/empty base notes.`);
+                            return; // Skip this degree if notes are invalid/empty
+                        }
+
+                        const octaveChordNotes = baseChordMidiNotes.map(n => n + octaveShift);
+                        
                          // Add the step for this degree's chord in this specific octave
                          chordSteps.push({
                             expectedMidiNotes: octaveChordNotes,
@@ -213,9 +238,8 @@ function useDrill({
                             degreeIndex: degreeIndex, // Store the degree index (0-based)
                             octaveIndex: octaveIndex // Store the octave index (0-based)
                          });
-                    }
-                    // --- End Octave Loop ---
-                });
+                    });
+                 }
 
                 // --- Apply Style (Order) --- 
                 let orderedChordSteps = [...chordSteps]; // Create copy
@@ -352,9 +376,31 @@ function useDrill({
     // --- Output / Return Value ---
 
     const currentStepData = drillSequence[currentStepIndex] || { expectedMidiNotes: [], type: null, stepIndex: 0, totalSteps: 0 }; 
+
+    // Calculate Step Label for display
+    let stepLabel = '';
+    if (currentStepData && currentStepData.type) {
+        const stepType = currentStepData.type;
+        const octaveIndex = currentStepData.octaveIndex || 0; // Default to 0 if not present
+        const actualOctave = selectedOctave + octaveIndex;
+
+        if (stepType === 'note') {
+            stepLabel = Note.fromMidi(currentStepData.expectedMidiNotes[0]);
+        } else if (stepType === 'chord_search_target') {
+            const root = currentStepData.rootNote;
+            stepLabel = `${root}${selectedChordType} (Octave ${actualOctave})`;
+        } else if (stepType === 'diatonic_chord') {
+            const targetChords = showSevenths ? diatonicSevenths : diatonicTriads;
+            const degreeIndex = currentStepData.degreeIndex;
+            const chordName = (targetChords && targetChords[degreeIndex]) ? targetChords[degreeIndex] : 'Unknown Chord';
+            stepLabel = `${chordName} (Octave ${actualOctave})`;
+        }
+    }
+
     const currentStepOutput = {
-       ...currentStepData,
-       totalSteps: drillSequence.length
+        ...currentStepData,
+        stepLabel: stepLabel, // Add the calculated label
+        totalSteps: drillSequence.length
     };
 
     return {

@@ -404,6 +404,9 @@ function Controls({
              <div style={{ marginTop: '10px' }}>
                 <span>Step: {currentDrillStep?.stepIndex !== undefined ? currentDrillStep.stepIndex + 1 : '-'} / {currentDrillStep?.totalSteps || '-'} | </span>
                  <span>Score: Correct: {drillScore?.correctNotes || 0}, Incorrect: {drillScore?.incorrectNotes || 0}</span>
+                 <p style={{ fontWeight: 'bold', marginTop: '5px' }}>
+                    Current: {currentDrillStep?.stepLabel || 'Loading...'}
+                 </p>
                  {/* Optionally display expected notes for debugging:
                  <p>Expected: {currentDrillStep?.expectedMidiNotes?.join(', ')}</p>
                  */}

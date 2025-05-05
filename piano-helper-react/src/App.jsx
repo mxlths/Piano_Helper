@@ -117,37 +117,60 @@ function App() {
   // --- Calculated Diatonic Chord Notes (Moved Up for Drills) ---
   const calculatedDiatonicChordNotes = useMemo(() => {
       console.log("App.jsx: Recalculating MIDI notes for all diatonic chords...");
-      const octave = selectedOctave;
+      const rootWithOctave = `${selectedRootNote}${selectedOctave}`;
+      const scaleInfo = Scale.get(scaleName);
       const targetChords = showSevenths ? diatonicSevenths : diatonicTriads;
       const allChordNotes = [];
 
+      if (scaleInfo.empty || !Array.isArray(scaleInfo.intervals) || scaleInfo.intervals.length < 7) {
+          console.warn("App.jsx - Diatonic Drill Calc - Waiting for valid scale intervals.");
+          return [];
+      }
       if (!Array.isArray(targetChords) || targetChords.length < 7) {
-          console.warn("App.jsx - Diatonic Drill Calc - Waiting for valid base chords.");
+          console.warn("App.jsx - Diatonic Drill Calc - Waiting for valid base chord names.");
           return []; // Return empty if base chords aren't ready
       }
 
+      const scaleIntervals = scaleInfo.intervals;
+
       for (let degree = 0; degree < 7; degree++) {
           let currentDegreeChordNotes = []; // MIDI notes for this specific degree
-          const fullChordName = targetChords[degree];
-          if (!fullChordName) continue; // Skip if name invalid
+          const fullChordName = targetChords[degree]; // e.g., "Cm"
+          const interval = scaleIntervals[degree]; // e.g., "5P"
+          
+          if (!fullChordName || !interval) continue; // Skip if name or interval invalid
 
           try {
-              const chordDataForRoot = Chord.get(fullChordName);
-              if (chordDataForRoot.empty) continue;
-              const chordRootName = chordDataForRoot.tonic;
-              const chordRootWithOctave = `${chordRootName}${octave}`;
-              const chordRootMidi = Note.midi(chordRootWithOctave);
-              if (!chordRootMidi) continue;
+              // 1. Determine the correct root note with octave based on scale intervals
+              const correctChordRoot = Note.transpose(rootWithOctave, interval); 
+              if (!correctChordRoot || Note.midi(correctChordRoot) === null) {
+                 console.warn(`App.jsx - Diatonic Drill Calc - Invalid root ${correctChordRoot} for degree ${degree+1}`);
+                 continue;
+              }
+              const correctChordRootMidi = Note.midi(correctChordRoot); // Needed for split hand calc
 
-              const chordTypeAlias = chordDataForRoot.aliases?.[0];
-              if (!chordTypeAlias) continue;
+              // 2. Get the chord type alias from the full name (e.g., "m" from "Cm")
+              const chordDataForType = Chord.get(fullChordName);
+              if (chordDataForType.empty) {
+                  console.warn(`App.jsx - Diatonic Drill Calc - Could not parse chord ${fullChordName} to get type.`);
+                  continue;
+              }
+              const chordTypeAlias = chordDataForType.aliases?.[0];
+              if (!chordTypeAlias) {
+                  console.warn(`App.jsx - Diatonic Drill Calc - Could not get type alias for ${fullChordName}.`);
+                  continue;
+              }
 
-              const chordData = Chord.getChord(chordTypeAlias, chordRootWithOctave);
-              if (!chordData || !Array.isArray(chordData.notes) || chordData.notes.length === 0) continue;
+              // 3. Get chord notes using the correct type AND the correct root+octave
+              const chordData = Chord.getChord(chordTypeAlias, correctChordRoot);
+              if (chordData.empty || !Array.isArray(chordData.notes) || chordData.notes.length === 0) {
+                 console.warn(`App.jsx - Diatonic Drill Calc - Failed to get notes for ${chordTypeAlias} at ${correctChordRoot}.`);
+                 continue;
+              }
 
               let chordNotes = chordData.notes; // Note names with correct octave
 
-              // Apply RH Inversion (same logic as notesToHighlight)
+              // 4. Apply RH Inversion (operates on note names, should be fine)
               if (rhInversion > 0 && rhInversion < chordNotes.length) {
                   const inversionSlice = chordNotes.slice(0, rhInversion);
                   const remainingSlice = chordNotes.slice(rhInversion);
@@ -155,14 +178,15 @@ function App() {
                   chordNotes = [...remainingSlice, ...invertedNotes];
               }
 
+              // 5. Convert to MIDI
               let midiNotes = chordNotes.map(Note.midi).filter(Boolean);
               if (midiNotes.length === 0) continue;
 
-              // Apply Split Hand Voicing (same logic as notesToHighlight)
+              // 6. Apply Split Hand Voicing (using correctChordRootMidi)
               if (splitHandVoicing) {
-                  const chordRootMidiValue = Note.midi(chordRootWithOctave);
-                  if (chordRootMidiValue !== null && chordRootMidiValue >= splitHandInterval) {
-                      const actualLhNote = chordRootMidiValue - splitHandInterval;
+                  // Use the MIDI value of the *correctly calculated* chord root 
+                  if (correctChordRootMidi !== null && correctChordRootMidi >= splitHandInterval) {
+                      const actualLhNote = correctChordRootMidi - splitHandInterval;
                       currentDegreeChordNotes = [actualLhNote, ...midiNotes];
                   } else {
                       currentDegreeChordNotes = midiNotes; // Fallback if split fails
@@ -171,7 +195,7 @@ function App() {
                   currentDegreeChordNotes = midiNotes;
               }
               
-              // Filter just in case & ensure sort order for comparison later?
+              // Filter & sort MIDI notes
                currentDegreeChordNotes = currentDegreeChordNotes.filter(n => n !== null && n >= 0 && n <= 127).sort((a,b)=> a-b);
 
           } catch (error) {
@@ -186,7 +210,8 @@ function App() {
       return allChordNotes; // Should be array of 7 arrays (some might be empty if errors occurred)
 
   }, [
-      selectedOctave, showSevenths, diatonicTriads, diatonicSevenths, // Base chords
+      scaleName, selectedOctave, selectedRootNote, // <-- Need scale info for intervals/root
+      showSevenths, diatonicTriads, diatonicSevenths, // Base chords
       rhInversion, splitHandVoicing, splitHandInterval // Modifiers
   ]);
 
