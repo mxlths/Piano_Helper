@@ -2,9 +2,9 @@ import React, { useRef, useEffect } from 'react';
 
 function PianoKeyboard({ rootNote, notesToHighlight = [], playedNotes = [], expectedNotes = [] }) {
   const canvasRef = useRef(null);
-  console.log('PianoKeyboard received notesToHighlight:', notesToHighlight);
-  console.log('PianoKeyboard received playedNotes:', playedNotes);
-  console.log('PianoKeyboard received expectedNotes:', expectedNotes);
+  // console.log('PianoKeyboard received notesToHighlight:', notesToHighlight);
+  // console.log('PianoKeyboard received playedNotes:', playedNotes);
+  // console.log('PianoKeyboard received expectedNotes:', expectedNotes);
   const startNote = 36; // C2 - Lowered for split hand voicing
   const numOctaves = 3; // Increased to 3 octaves
   const numWhiteKeys = 7 * numOctaves + 1; // Include the C at the end of the second octave

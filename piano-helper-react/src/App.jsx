@@ -6,10 +6,11 @@ import PianoKeyboard from './components/PianoKeyboard';
 import useMidi from './hooks/useMidi'; // Import the custom hook
 import useMetronome from './hooks/useMetronome.js'; // Import the metronome hook
 import useDrill from './hooks/useDrill.js'; // <-- Import useDrill
+import useMidiPlayer from './hooks/useMidiPlayer.js'; // <-- Import MIDI Player hook
 import { Scale, Note, Chord, ScaleType, ChordType, PcSet, Interval } from "@tonaljs/tonal"; // Import Tonal functions and Interval
 
-console.log("Tonal PcSet object:", PcSet);
-console.log("Tonal Scale object:", Scale); // <-- Add log for Scale object
+// console.log("Tonal PcSet object:", PcSet);
+// console.log("Tonal Scale object:", Scale); // <-- Add log for Scale object
 
 // --- Constants ---
 // const ROOT_NOTES = PcSet.chroma(); // TEMP: PcSet.chroma() returning '000000000000'
@@ -84,7 +85,7 @@ function App() {
             const chordName = detected.length > 0 ? detected[0] : `${tonic}?`; // Fallback name
             chords.push(chordName);
         }
-        console.log(`App.jsx - Calculated Diatonic Triads for ${scaleName}:`, chords); // Log results
+        // console.log(`App.jsx - Calculated Diatonic Triads for ${scaleName}:`, chords); // Log results
         return chords.length === 7 ? chords : []; // Ensure we have 7 chords
       } catch (e) {
           console.error(`Error building triads for ${scaleName}:`, e); return [];
@@ -107,7 +108,7 @@ function App() {
             const chordName = detected.length > 0 ? detected[0] : `${tonic}?7`; // Fallback name
             chords.push(chordName);
         }
-        console.log(`App.jsx - Calculated Diatonic Sevenths for ${scaleName}:`, chords); // Log results
+        // console.log(`App.jsx - Calculated Diatonic Sevenths for ${scaleName}:`, chords); // Log results
         return chords.length === 7 ? chords : [];
      } catch (e) {
          console.error(`Error building 7th chords for ${scaleName}:`, e); return [];
@@ -116,7 +117,7 @@ function App() {
 
   // --- Calculated Diatonic Chord Notes (Moved Up for Drills) ---
   const calculatedDiatonicChordNotes = useMemo(() => {
-      console.log("App.jsx: Recalculating MIDI notes for all diatonic chords...");
+      // console.log("App.jsx: Recalculating MIDI notes for all diatonic chords...");
       const rootWithOctave = `${selectedRootNote}${selectedOctave}`;
       const scaleInfo = Scale.get(scaleName);
       const targetChords = showSevenths ? diatonicSevenths : diatonicTriads;
@@ -206,7 +207,7 @@ function App() {
           allChordNotes.push(currentDegreeChordNotes); 
       }
 
-      console.log("App.jsx: Finished calculating MIDI notes for diatonic chords:", allChordNotes);
+      // console.log("App.jsx: Finished calculating MIDI notes for diatonic chords:", allChordNotes);
       return allChordNotes; // Should be array of 7 arrays (some might be empty if errors occurred)
 
   }, [
@@ -217,7 +218,7 @@ function App() {
 
   // --- Instantiate Hooks ---
 
-  // ** Call useMidi FIRST to get latestNoteOn/Off **
+  // ** Call useMidi FIRST to get latestNoteOn/Off and sendMessage **
   const {
     isInitialized: isMidiInitialized,
     inputs: midiInputs,
@@ -227,13 +228,23 @@ function App() {
     logMessages: midiLogMessages,
     selectInput: selectMidiInput,
     selectOutput: selectMidiOutput,
-    sendMessage: sendMidiMessage,
+    sendMessage: sendMidiMessage, // <-- Get sendMessage
     latestNoteOn, // <-- Get latest Note On event (for drill trigger)
     activeNotes // <-- Get managed active notes directly
   } = useMidi(); // <-- No callbacks passed
 
+  // ** Instantiate useMidiPlayer AFTER useMidi **
+  const {
+      playbackState,
+      loadedFileName,
+      loadMidiFile,
+      play: playMidiFile,
+      pause: pauseMidiFile,
+      stop: stopMidiFile,
+  } = useMidiPlayer(sendMidiMessage); // <-- Pass sendMessage
+
   // Log activeNotes on every render of App
-  console.log("App.jsx render - activeNotes:", activeNotes);
+  // console.log("App.jsx render - activeNotes:", activeNotes);
 
   // ** Instantiate useDrill AFTER useMidi **
   const {
@@ -249,18 +260,10 @@ function App() {
       selectedChordType,
       diatonicTriads,
       diatonicSevenths,
-      selectedOctave,
-      showSevenths,
-      splitHandVoicing,
-      splitHandInterval,
-      rhInversion,
-      playedNoteEvent: latestNoteOn, // <-- Pass latestNoteOn event here
-      calculatedDiatonicChordNotes, // <-- Pass pre-calculated chord notes
-      selectedRootNote, // <-- Add missing prop
-      ROOT_NOTES // <-- Pass the ROOT_NOTES constant
+      latestNoteOn // Pass latestNoteOn
   });
 
-  // Metronome state and functions
+  // ** Instantiate useMetronome AFTER useMidi **
   const {
     isPlaying: isMetronomePlaying,
     bpm: metronomeBpm,
@@ -320,7 +323,7 @@ function App() {
         const chordRootMidi = Note.midi(chordRootWithOctave);
         if (!chordRootMidi) { console.warn(`Invalid MIDI for ${chordRootWithOctave}`); return []; }
 
-        console.log(`App.jsx - Diatonic Mode - Attempting chord: ${fullChordName} starting near ${chordRootWithOctave}`);
+        // console.log(`App.jsx - Diatonic Mode - Attempting chord: ${fullChordName} starting near ${chordRootWithOctave}`);
 
         // --- MODIFICATION START ---
         // Get the chord TYPE alias (e.g., 'M', 'm', 'm7', 'm7b5', 'dim')
@@ -332,7 +335,7 @@ function App() {
         }
 
         const chordData = Chord.getChord(chordTypeAlias, chordRootWithOctave); 
-        console.log(`App.jsx - Diatonic Mode - Chord.getChord result for type alias '${chordTypeAlias}' and root '${chordRootWithOctave}':`, chordData);
+        // console.log(`App.jsx - Diatonic Mode - Chord.getChord result for type alias '${chordTypeAlias}' and root '${chordRootWithOctave}':`, chordData);
         // --- MODIFICATION END ---
         
         if (!chordData || !Array.isArray(chordData.notes) || chordData.notes.length === 0) {
@@ -341,7 +344,7 @@ function App() {
          }
 
         let chordNotes = chordData.notes; // Note names with correct octave
-        console.log(`App.jsx - Diatonic Mode - Initial Chord Notes:`, chordNotes);
+        // console.log(`App.jsx - Diatonic Mode - Initial Chord Notes:`, chordNotes);
 
         // Apply RH Inversion
         if (rhInversion > 0 && rhInversion < chordNotes.length) {
@@ -351,11 +354,11 @@ function App() {
             // Transpose the moved notes up an octave
             const invertedNotes = inversionSlice.map(n => Note.transpose(n, '8P')); 
             chordNotes = [...remainingSlice, ...invertedNotes];
-             console.log(`App.jsx - Diatonic Mode - Notes after Inversion:`, chordNotes);
+             // console.log(`App.jsx - Diatonic Mode - Notes after Inversion:`, chordNotes);
         }
         
         let midiNotes = chordNotes.map(Note.midi).filter(Boolean);
-         console.log(`App.jsx - Diatonic Mode - Calculated MIDI notes:`, midiNotes);
+         // console.log(`App.jsx - Diatonic Mode - Calculated MIDI notes:`, midiNotes);
         if (midiNotes.length === 0) {
              console.warn(`App.jsx - Diatonic Mode - No valid MIDI notes for ${fullChordName}`);
              return []; 
@@ -375,7 +378,7 @@ function App() {
         } else {
           calculatedNotes = midiNotes;
         }
-         console.log(`App.jsx - Diatonic Mode - Final calculatedNotes before filter:`, calculatedNotes);
+         // console.log(`App.jsx - Diatonic Mode - Final calculatedNotes before filter:`, calculatedNotes);
 
       }
     } catch (error) {
@@ -498,7 +501,7 @@ function App() {
     setIsDrillActive(startingDrill);
   };
 
-  console.log('App.jsx - ROOT_NOTES:', ROOT_NOTES);
+  // console.log('App.jsx - ROOT_NOTES:', ROOT_NOTES);
   // console.log('App.jsx - Notes to Highlight:', notesToHighlight);
 
   return (
@@ -575,6 +578,23 @@ function App() {
         // Pass style state and handler
         drillStyle={drillStyle}
         onDrillStyleChange={handleDrillStyleChange}
+
+        // --- MIDI Player Props ---
+        playbackState={playbackState}
+        loadedMidiFileName={loadedFileName} // Pass the name of the loaded file
+        availableMidiFiles={[
+            // TEMP: Hardcode list for now. Get dynamically later?
+            // Prepend the base path from vite.config.js
+            { name: "Jazz Beat 1", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T007_FullKit_102.mid" },
+            { name: "Jazz Beat 2", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T014_FullKit_104.mid" },
+            { name: "Jazz Beat 3", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T017_FullKit_103.mid" },
+            { name: "9/8 Beat", url: "/Piano_Helper/midi-files/JBB_9-8_NmlStr_T024_FullKit_117.mid" },
+            { name: "12/8 Beat", url: "/Piano_Helper/midi-files/JBB_12-8_NmlStr_T096_FullKit_120.mid" }
+        ]}
+        onLoadMidiFile={loadMidiFile}
+        onPlayMidiFile={playMidiFile}
+        onPauseMidiFile={pauseMidiFile}
+        onStopMidiFile={stopMidiFile}
       />
       <PianoKeyboard
         rootNote={rootNoteMidi}

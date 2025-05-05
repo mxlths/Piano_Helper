@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Note, Scale, Chord } from '@tonaljs/tonal'; // Import for getting degree names and scale intervals
 
 // Define styles outside the component
@@ -77,11 +77,25 @@ function Controls({
   onDrillRepetitionsChange,
   // Add style props
   drillStyle,
-  onDrillStyleChange
+  onDrillStyleChange,
+
+  // --- MIDI Player Props ---
+  playbackState, // 'stopped', 'playing', 'paused'
+  loadedMidiFileName,
+  availableMidiFiles = [],
+  onLoadMidiFile,
+  onPlayMidiFile,
+  onPauseMidiFile,
+  onStopMidiFile
 }) {
 
-  console.log('Controls.jsx - Received diatonicTriads prop:', diatonicTriads);
-  console.log('Controls.jsx - Received diatonicSevenths prop:', diatonicSevenths);
+  // Add useEffect to log prop changes
+  useEffect(() => {
+    // console.log(`[Controls.jsx] Props received - playbackState: ${playbackState}, loadedMidiFileName: ${loadedMidiFileName}`);
+  }, [playbackState, loadedMidiFileName]);
+
+  // console.log('Controls.jsx - Received diatonicTriads prop:', diatonicTriads);
+  // console.log('Controls.jsx - Received diatonicSevenths prop:', diatonicSevenths);
   //console.log('Controls.jsx - Diatonic Chords:', diatonicChordTypes);
 
   const handleInputChange = (event) => {
@@ -363,7 +377,6 @@ function Controls({
                 style={{ width: '50px', marginRight: '20px' }}
              />
 
-             {/* Drill Style Dropdown */}
               <label htmlFor="drill-style" style={{ marginRight: '10px' }}>Style:</label>
               <select 
                  id="drill-style"
@@ -412,6 +425,57 @@ function Controls({
                  */}
             </div>
          )}
+      </div>
+
+      {/* --- MIDI File Player Controls --- */}
+      <div style={{ marginTop: '20px', borderTop: '1px solid #ccc', paddingTop: '15px' }}>
+        <h4>MIDI Backing Track</h4>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <label htmlFor="midi-file-select">Select Track:</label>
+          <select 
+            id="midi-file-select"
+            onChange={(e) => onLoadMidiFile(e.target.value)} // Call load with the selected URL
+            value={availableMidiFiles.find(f => f.name === loadedMidiFileName)?.url || ""} // Reflect currently loaded file URL
+            disabled={playbackState === 'playing' || playbackState === 'paused'} // Disable while playing/paused
+          >
+            <option value="">-- Choose a MIDI file --</option>
+            {availableMidiFiles.map(file => (
+              <option key={file.url} value={file.url}>{file.name}</option>
+            ))}
+          </select>
+
+          <button 
+            onClick={onPlayMidiFile} 
+            disabled={!loadedMidiFileName || playbackState === 'playing'} // Disable if no file loaded or already playing
+          >
+            Play
+          </button>
+          <button 
+            onClick={onPauseMidiFile} 
+            disabled={playbackState !== 'playing'} // Disable if not playing
+          >
+            Pause
+          </button>
+          <button 
+            onClick={onStopMidiFile} 
+            disabled={playbackState === 'stopped'} // Disable if already stopped
+          >
+            Stop
+          </button>
+
+          {loadedMidiFileName && (
+            <span style={{ marginLeft: '15px', fontStyle: 'italic' }}>
+              Loaded: {loadedMidiFileName}
+            </span>
+          )}
+           {playbackState !== 'stopped' && (
+             <span style={{ marginLeft: '15px', fontWeight: 'bold' }}>
+                ({playbackState})
+             </span>
+           )}
+        </div>
+         {!selectedOutputId && isMidiInitialized && 
+             <p style={{marginTop: '5px'}}><small>Select a MIDI Output device to enable playback.</small></p>}
       </div>
 
     </div>

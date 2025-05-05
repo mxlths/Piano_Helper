@@ -194,7 +194,7 @@ function useMidi() {
                 const next = new Set(prev);
                 const deleted = next.delete(data1);
                 // Log the result of the deletion and the next state
-                console.log(`useMidi: Attempted to remove note ${data1}. Deleted: ${deleted}. Next activeNotes size: ${next.size}`); 
+                // console.log(`useMidi: Attempted to remove note ${data1}. Deleted: ${deleted}. Next activeNotes size: ${next.size}`); 
                 return next;
             });
         } else if (command === 11) {
