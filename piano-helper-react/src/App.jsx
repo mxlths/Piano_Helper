@@ -51,6 +51,7 @@ function App() {
   // User configurable drill options (set before starting)
   const [drillNumOctaves, setDrillNumOctaves] = useState(1); // New state for octave range
   const [drillRepetitions, setDrillRepetitions] = useState(1); // New state for repetitions
+  const [drillStyle, setDrillStyle] = useState('ascending'); // New state for drill order style
   // Options passed to the active drill instance
   const [drillOptions, setDrillOptions] = useState({}); // User selections for the current drill
   const [currentDrillStep, setCurrentDrillStep] = useState({ expectedMidiNotes: [], type: null, stepIndex: 0, totalSteps: 0 });
@@ -449,6 +450,13 @@ function App() {
      }
   };
 
+  // New handler for drill style
+  const handleDrillStyleChange = (event) => {
+    const newStyle = event.target.value;
+    // Add validation if needed, e.g., ensure it's one of the expected values
+    setDrillStyle(newStyle);
+  };
+
   const handleDrillToggle = () => {
     const startingDrill = !isDrillActive;
     if (startingDrill) {
@@ -456,7 +464,7 @@ function App() {
         setDrillOptions({
             octaves: drillNumOctaves, // Pass the range setting
             repetitions: drillRepetitions,
-            // Potentially add 'style' here later if needed for chord drills
+            style: drillStyle // Pass the selected style
         });
     } else {
         // Reset options or leave them? Let's clear for now.
@@ -539,6 +547,9 @@ function App() {
         drillRepetitions={drillRepetitions}
         onDrillOctavesChange={handleDrillOctavesChange}
         onDrillRepetitionsChange={handleDrillRepetitionsChange}
+        // Pass style state and handler
+        drillStyle={drillStyle}
+        onDrillStyleChange={handleDrillStyleChange}
       />
       <PianoKeyboard
         rootNote={rootNoteMidi}

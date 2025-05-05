@@ -1,6 +1,14 @@
 import React from 'react';
 import { Note, Scale, Chord } from '@tonaljs/tonal'; // Import for getting degree names and scale intervals
 
+// Define styles outside the component
+const DRILL_STYLES = [
+  { value: 'ascending', label: 'Ascending' },
+  { value: 'descending', label: 'Descending' },
+  { value: 'random', label: 'Random' },
+  { value: 'thirds', label: 'Thirds (Scales Only)' }, // Label indicates restriction
+];
+
 function Controls({ 
   // Mode
   modes,
@@ -66,7 +74,10 @@ function Controls({
   drillNumOctaves,
   drillRepetitions,
   onDrillOctavesChange,
-  onDrillRepetitionsChange
+  onDrillRepetitionsChange,
+  // Add style props
+  drillStyle,
+  onDrillStyleChange
 }) {
 
   console.log('Controls.jsx - Received diatonicTriads prop:', diatonicTriads);
@@ -352,21 +363,42 @@ function Controls({
                 style={{ width: '50px', marginRight: '20px' }}
              />
 
-             <label htmlFor="drill-repetitions" style={{ marginRight: '10px' }}>Repetitions:</label>
-             <input 
-                type="number" 
-                id="drill-repetitions" 
-                value={drillRepetitions} 
-                onChange={onDrillRepetitionsChange} 
-                min="1" 
-                max="10" // Match limit in App.jsx
-                disabled={isDrillActive}
-                style={{ width: '50px', marginRight: '20px' }}
-             />
+             {/* Drill Style Dropdown */}
+              <label htmlFor="drill-style" style={{ marginRight: '10px' }}>Style:</label>
+              <select 
+                 id="drill-style"
+                 value={drillStyle}
+                 onChange={onDrillStyleChange}
+                 disabled={isDrillActive} 
+                 style={{ marginRight: '20px' }}
+              >
+                 {DRILL_STYLES.map(styleOpt => (
+                     <option 
+                        key={styleOpt.value} 
+                        value={styleOpt.value}
+                        // Disable "Thirds" if not in scale mode
+                        disabled={styleOpt.value === 'thirds' && currentMode !== 'scale_display'}
+                     >
+                         {styleOpt.label}
+                     </option>
+                 ))}
+              </select>
 
-             <button onClick={setIsDrillActive} style={{ marginLeft: '20px' }}>
-                 {isDrillActive ? 'Stop Drill' : 'Start Drill'}
-             </button>
+              <label htmlFor="drill-repetitions" style={{ marginRight: '10px' }}>Repetitions:</label>
+              <input 
+                 type="number" 
+                 id="drill-repetitions" 
+                 value={drillRepetitions} 
+                 onChange={onDrillRepetitionsChange} 
+                 min="1" 
+                 max="10" // Match limit in App.jsx
+                 disabled={isDrillActive}
+                 style={{ width: '50px', marginRight: '20px' }}
+              />
+
+              <button onClick={setIsDrillActive} style={{ marginLeft: '20px' }}>
+                  {isDrillActive ? 'Stop Drill' : 'Start Drill'}
+              </button>
          </div>
          {isDrillActive && (
              <div style={{ marginTop: '10px' }}>

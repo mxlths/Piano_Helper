@@ -1,6 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Note, Scale, Chord } from '@tonaljs/tonal';
 
+// Helper function to shuffle an array (Fisher-Yates algorithm)
+function shuffleArray(array) {
+  let currentIndex = array.length, randomIndex;
+  // While there remain elements to shuffle.
+  while (currentIndex !== 0) {
+    // Pick a remaining element.
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    // And swap it with the current element.
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex], array[currentIndex]];
+  }
+  return array;
+}
+
 function useDrill({
     // Props we'll likely need from App.jsx 
     isDrillActive,
@@ -55,17 +70,28 @@ function useDrill({
                     midiNotes.push(...octaveNotes);
                 }
                 
-                // TODO: Implement other styles (descending, thirds, etc.)
+                // --- Apply Style (Order) ---
+                let orderedMidiNotes = [...midiNotes]; // Create a copy
                 if (style === 'ascending') {
-                   midiNotes.sort((a, b) => a - b); // Simple sort for ascending
+                    orderedMidiNotes.sort((a, b) => a - b); 
                 } else if (style === 'descending') {
-                    midiNotes.sort((a, b) => b - a); // Sort descending
-                } // Add more style handling here
-
-                let fullSequenceNotes = [];
-                for (let i = 0; i < repetitions; i++) {
-                   fullSequenceNotes.push(...midiNotes);
+                    orderedMidiNotes.sort((a, b) => b - a); 
+                } else if (style === 'random') {
+                    orderedMidiNotes = shuffleArray(orderedMidiNotes);
+                } else if (style === 'thirds') {
+                    // TODO: Implement specific logic for playing scale notes IN thirds (1,3,2,4,3,5...)
+                    // For now, treat as ascending
+                    orderedMidiNotes.sort((a, b) => a - b);
+                    console.warn("useDrill: 'Thirds' style for scales not fully implemented yet.");
                 }
+                // --- End Style --- 
+
+                // --- Apply Repetitions ---
+                let fullSequenceNotes = []; 
+                for (let i = 0; i < repetitions; i++) {
+                    fullSequenceNotes.push(...orderedMidiNotes);
+                }
+                // --- End Repetitions ---
 
                 // Format into step objects
                 generatedSequence = fullSequenceNotes.map((note) => ({
@@ -139,11 +165,22 @@ function useDrill({
                     }
                 }
 
-                // Apply repetitions to the entire sequence of roots/octaves
+                // --- Apply Style (Order) --- 
+                let orderedChordSteps = [...chordSteps]; // Create copy
+                const { style } = drillOptions;
+                if (style === 'descending') {
+                    orderedChordSteps.reverse();
+                } else if (style === 'random') {
+                    orderedChordSteps = shuffleArray(orderedChordSteps);
+                } // 'ascending' is default, 'thirds' not applicable here
+                // --- End Style ---
+
+                // --- Apply Repetitions ---
                 generatedSequence = [];
                 for (let i = 0; i < repetitions; i++) {
-                    generatedSequence.push(...chordSteps);
+                    generatedSequence.push(...orderedChordSteps);
                 }
+                // --- End Repetitions ---
 
             } else if (currentMode === 'diatonic_chords') {
                 // --- Diatonic Chord Drill Generation (Iterating through Degrees & Octaves) ---
@@ -180,13 +217,21 @@ function useDrill({
                     // --- End Octave Loop ---
                 });
 
-                // TODO: Implement different styles (random, specific degrees etc.) for the base sequence before repetitions/octaves?
+                // --- Apply Style (Order) --- 
+                let orderedChordSteps = [...chordSteps]; // Create copy
+                if (style === 'descending') {
+                    orderedChordSteps.reverse();
+                } else if (style === 'random') {
+                    orderedChordSteps = shuffleArray(orderedChordSteps);
+                } // 'ascending' is default, 'thirds' not applicable here
+                // --- End Style ---
 
-                // Apply repetitions to the entire sequence of degrees/octaves
+                // --- Apply Repetitions ---
                 generatedSequence = [];
                 for (let i = 0; i < repetitions; i++) {
-                   generatedSequence.push(...chordSteps);
+                    generatedSequence.push(...orderedChordSteps);
                 }
+                // --- End Repetitions ---
                 
             } else {
                 console.warn(`useDrill: Unknown drill mode: ${currentMode}`);
