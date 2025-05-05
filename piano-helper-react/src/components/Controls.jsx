@@ -82,7 +82,24 @@ function Controls({
   onStopMidiFile,
   style, // Keep style prop passed from App
   // Add sendMidiMessage prop
-  sendMidiMessage
+  sendMidiMessage,
+  // Chord Progression Props <-- NEW
+  availableProgressions = [],
+  selectedProgressionId,
+  onProgressionChange,
+
+  // Voicing Props <-- NEW
+  voicingSplitHand,
+  voicingLhOctaveOffset, // -12 or -24
+  voicingRhRootless,
+  onVoicingSplitHandChange,
+  onVoicingLhOffsetChange,
+  onVoicingRhRootlessChange,
+  // NEW Voicing Props
+  voicingUseShell,
+  voicingAddOctaveRoot,
+  onVoicingUseShellChange,
+  onVoicingAddOctaveRootChange,
 }) {
 
   const [activeTab, setActiveTab] = useState(TABS[0].id); // Default to 'setup' tab
@@ -191,6 +208,136 @@ function Controls({
                  </select>
                </div>
             )}
+            {/* --- Chord Progression Selection (Only for 'chord_progression' mode) --- */}
+            {currentMode === 'chord_progression' && (
+              <div style={{ marginBottom: '15px', borderLeft: '3px solid lightcoral', paddingLeft: '10px' }}>
+                 <label htmlFor="progression-select">Progression: </label>
+                 <select 
+                    id="progression-select" 
+                    value={selectedProgressionId || ''} 
+                    onChange={(e) => onProgressionChange(e.target.value)}
+                 >
+                    {/* Add a default/placeholder option? */} 
+                    {/* <option value="">-- Select Progression --</option> */} 
+                    {availableProgressions.map(prog => (
+                     <option key={prog.id} value={prog.id}>{prog.name}</option>
+                    ))}
+                 </select>
+              </div>
+            )}
+            {/* --- Voicing Options (Duplicate for Chord Progression Mode Clarity) --- */}
+            {currentMode === 'chord_progression' && (
+              <div style={{ marginTop: '15px', borderLeft: '3px solid lightseagreen', paddingLeft: '10px' }}>
+                <h4>Progression Voicing Options</h4>
+                {/* Show 7ths Checkbox */}
+                <div style={{ marginBottom: '10px' }}>
+                   <label htmlFor="prog-show-sevenths">
+                     <input 
+                         type="checkbox" 
+                         id="prog-show-sevenths" 
+                         checked={showSevenths} 
+                         onChange={onShowSeventhsChange}
+                     />
+                      Show 7ths
+                   </label>
+                </div>
+                 {/* RH Inversion Select */}
+                <div style={{ marginBottom: '10px' }}>
+                    <label htmlFor="prog-rh-inversion" style={{ marginRight: '5px' }}>RH Inversion:</label>
+                    <select 
+                        id="prog-rh-inversion"
+                        value={rhInversion}
+                        onChange={(e) => onRhInversionChange(e.target.value)}
+                    >
+                        {inversions && inversions.map(inv => (
+                            <option 
+                              key={inv.value} 
+                              value={inv.value}
+                              disabled={inv.value === 3 && !showSevenths} // Disable 3rd inv if not 7ths
+                            >
+                                {inv.label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+                {/* Split Hand Checkbox */}
+                <div style={{ marginBottom: '10px' }}>
+                   <input
+                     type="checkbox"
+                     id="prog-split-hand"
+                     checked={voicingSplitHand}
+                     onChange={onVoicingSplitHandChange}
+                   />
+                   <label htmlFor="prog-split-hand"> Split Hand (LH Root / RH Chord)</label>
+                </div>
+
+                {/* LH Octave Offset (Only if Split Hand active) */}
+                {voicingSplitHand && (
+                  <div style={{ marginLeft: '20px', marginBottom: '10px' }}>
+                    <label style={{ marginRight: '10px' }}>LH Octave:</label>
+                    <label style={{ marginRight: '15px' }}>
+                      <input
+                        type="radio"
+                        name="prog-lhOffset"
+                        value={-12} // 1 Octave Down
+                        checked={voicingLhOctaveOffset === -12}
+                        onChange={(e) => onVoicingLhOffsetChange(e.target.value)}
+                      /> -1 Oct
+                    </label>
+                    <label>
+                      <input
+                        type="radio"
+                        name="prog-lhOffset"
+                        value={-24} // 2 Octaves Down
+                        checked={voicingLhOctaveOffset === -24}
+                        onChange={(e) => onVoicingLhOffsetChange(e.target.value)}
+                      /> -2 Oct
+                    </label>
+                  </div>
+                )}
+
+                {/* RH Rootless Checkbox (Only if Split Hand active) */}
+                {voicingSplitHand && (
+                  <div style={{ marginLeft: '20px', marginBottom: '10px' }}>
+                    <label htmlFor="prog-rh-rootless">
+                      <input
+                        type="checkbox"
+                        id="prog-rh-rootless"
+                        checked={voicingRhRootless}
+                        onChange={onVoicingRhRootlessChange}
+                        disabled={!voicingSplitHand} // Disable if split hand off
+                      />
+                        Rootless RH Chord
+                    </label>
+                  </div>
+                )}
+
+                {/* Shell Voicing Checkbox */}
+                <div style={{ marginBottom: '10px' }}>
+                   <label htmlFor="prog-shell-voicing">
+                     <input
+                       type="checkbox"
+                       id="prog-shell-voicing"
+                       checked={voicingUseShell}
+                       onChange={onVoicingUseShellChange}
+                     />
+                      Shell Voicing (R, 3, 7)
+                   </label>
+                 </div>
+                 {/* Add Upper Octave Root Checkbox */}
+                 <div style={{ marginBottom: '10px' }}>
+                   <label htmlFor="prog-add-octave-root">
+                     <input
+                       type="checkbox"
+                       id="prog-add-octave-root"
+                       checked={voicingAddOctaveRoot}
+                       onChange={onVoicingAddOctaveRootChange}
+                     />
+                      Add Upper Octave Root
+                   </label>
+                 </div>
+              </div>
+            )}
             {/* --- Diatonic Chord Controls (Only for 'diatonic_chords' mode) --- */}
             {currentMode === 'diatonic_chords' && (
               <div style={{ marginTop: '10px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
@@ -287,6 +434,45 @@ function Controls({
                             ))}
                         </select>
                     </div>
+                </div>
+                {/* Rootless RH Checkbox (Added for Diatonic Mode) */} 
+                {splitHandVoicing && (
+                   <div style={{ marginTop: '10px', marginLeft: '15px' }}>
+                     <label htmlFor="diatonic-rh-rootless">
+                       <input
+                         type="checkbox"
+                         id="diatonic-rh-rootless"
+                         checked={voicingRhRootless} // Use the shared state
+                         onChange={onVoicingRhRootlessChange} // Use the shared handler
+                         disabled={!splitHandVoicing} // Disable if split hand off
+                       />
+                        Rootless RH Chord
+                     </label>
+                   </div>
+                )}
+                {/* Shell Voicing Checkbox (Diatonic) */}
+                <div style={{ marginTop: '10px', marginLeft: '15px' }}>
+                   <label htmlFor="diatonic-shell-voicing">
+                       <input
+                           type="checkbox"
+                           id="diatonic-shell-voicing"
+                           checked={voicingUseShell}
+                           onChange={onVoicingUseShellChange}
+                       />
+                       Shell Voicing (R, 3, 7)
+                   </label>
+                </div>
+                 {/* Add Upper Octave Root Checkbox (Diatonic) */}
+                <div style={{ marginTop: '10px', marginLeft: '15px' }}>
+                   <label htmlFor="diatonic-add-octave-root">
+                       <input
+                           type="checkbox"
+                           id="diatonic-add-octave-root"
+                           checked={voicingAddOctaveRoot}
+                           onChange={onVoicingAddOctaveRootChange}
+                       />
+                       Add Upper Octave Root
+                   </label>
                 </div>
               </div>
             )}
@@ -448,6 +634,71 @@ function Controls({
             />
             {/* Placeholder for GM2 controls */}
             {/* <p>GM2 Sound selection controls will go here.</p> */}
+          </div>
+        )}
+
+        {/* --- Diatonic Chords Tab Content --- */}
+        {activeTab === 'diatonic' && (
+          <div>
+            {/* ... existing diatonic controls ... */}
+
+            {/* --- Voicing Options (Also relevant for Chord Progression Mode) --- */}
+            {(currentMode === 'diatonic_chords' || currentMode === 'chord_progression') && (
+               <div style={{ marginTop: '20px', borderTop: '1px solid #ccc', paddingTop: '15px' }}>
+                 <h4>Voicing Options</h4>
+                 {/* Split Hand Checkbox */}
+                 <div>
+                   <label>
+                     <input
+                       type="checkbox"
+                       checked={voicingSplitHand}
+                       onChange={onVoicingSplitHandChange}
+                     />
+                     Split Hand (LH Root / RH Chord)
+                   </label>
+                 </div>
+
+                 {/* LH Octave Offset (Only if Split Hand active) */}
+                 {voicingSplitHand && (
+                   <div style={{ marginLeft: '20px', marginBottom: '10px' }}>
+                     <label style={{ marginRight: '10px' }}>LH Octave:</label>
+                     <label style={{ marginRight: '15px' }}>
+                       <input
+                         type="radio"
+                         name="lhOffset"
+                         value={-12} // 1 Octave Down
+                         checked={voicingLhOctaveOffset === -12}
+                         onChange={(e) => onVoicingLhOffsetChange(e.target.value)}
+                       /> -1 Oct
+                     </label>
+                     <label>
+                       <input
+                         type="radio"
+                         name="lhOffset"
+                         value={-24} // 2 Octaves Down
+                         checked={voicingLhOctaveOffset === -24}
+                         onChange={(e) => onVoicingLhOffsetChange(e.target.value)}
+                       /> -2 Oct
+                     </label>
+                   </div>
+                 )}
+
+                 {/* RH Rootless Checkbox (Only if Split Hand active) */}
+                 {voicingSplitHand && (
+                   <div style={{ marginLeft: '20px' }}>
+                     <label>
+                       <input
+                         type="checkbox"
+                         checked={voicingRhRootless}
+                         onChange={onVoicingRhRootlessChange}
+                         disabled={!voicingSplitHand} // Disable if split hand off
+                       />
+                       Rootless RH Chord
+                     </label>
+                   </div>
+                 )}
+               </div>
+            )}
           </div>
         )}
       </div>

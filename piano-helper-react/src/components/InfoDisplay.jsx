@@ -14,11 +14,15 @@ function InfoDisplay({
   diatonicTriads = [], // Add default
   diatonicSevenths = [], // Add default
   selectedDiatonicDegree,
-  showSevenths 
+  showSevenths,
+  // Chord Progression mode props <-- NEW
+  selectedProgression = null,
+  transposedProgressionChords = []
 }) {
 
   let title = '-';
-  let notes = []; // Initialize as array
+  let notes = []; // Initialize as array - Represents pitch classes or MIDI notes depending on context below
+  let noteNames = '-'; // <-- Declare noteNames
   let formula = '-';
   let midiNotes = []; // Initialize as array
 
@@ -29,7 +33,8 @@ function InfoDisplay({
       // Ensure notes property exists and is an array
       if (scaleData && Array.isArray(scaleData.notes)) { 
         title = scaleData.name || scaleName;
-        notes = scaleData.notes;
+        notes = scaleData.notes; // Raw pitch classes
+        noteNames = notes.join(', '); // String for display
         formula = scaleData.intervals.join(' ');
         const rootOctave = Note.octave(selectedRoot) || 4;
         midiNotes = notes.map(noteName => Note.midi(`${noteName}${rootOctave}`)).filter(Boolean);
@@ -41,7 +46,8 @@ function InfoDisplay({
         const chordData = Chord.get(chordName);
         if (chordData && Array.isArray(chordData.notes)) {
             title = chordName;
-            notes = chordData.notes;
+            notes = chordData.notes; // Raw pitch classes
+            noteNames = notes.join(', '); // String for display
             formula = chordData.intervals.join(' ');
             const rootOctave = Note.octave(selectedRoot) || 4;
             // Get notes based on the search type and root+octave
@@ -67,6 +73,7 @@ function InfoDisplay({
             notes = [];
             formula = '-';
             midiNotes = [];
+            noteNames = '-'; // Ensure noteNames is reset
             // Skip the rest of the chord processing for this render cycle
         } else {
             // --- ORIGINAL LOGIC MOVED INSIDE ELSE BLOCK ---
@@ -89,6 +96,7 @@ function InfoDisplay({
                 title = `${roman}: ${fullChordName} (in ${scaleName})`;
                 notes = chordData.notes; // Note names relative to chord root
                 formula = chordData.intervals.join(' ');
+                noteNames = notes.join(', '); // String for display
                 
                 // Calculate MIDI notes using full name and correct root+octave
                 const chordRootName = chordData.tonic;
@@ -121,9 +129,29 @@ function InfoDisplay({
                 notes = [];
                 formula = '-';
                 midiNotes = [];
+                noteNames = '-'; // Ensure noteNames is reset
                 // throw new Error(`Could not get data for chord ${fullChordName}`); 
             }
             // --- END OF MOVED BLOCK ---
+        }
+    } else if (currentMode === 'chord_progression') {
+        if (selectedProgression && transposedProgressionChords.length > 0) {
+            title = `Progression: ${selectedProgression.name || 'Selected Progression'}`;
+            // Display Roman numerals and chord names
+            const romanNumeralsString = transposedProgressionChords.map(c => c.roman || '?').join(' - ');
+            const chordNamesString = transposedProgressionChords.map(c => c.name || '?').join(' - ');
+            noteNames = `Chords: ${chordNamesString}`;
+            formula = `Roman: ${romanNumeralsString}`; 
+            // Display MIDI notes of the first chord for now?
+            const firstChordNotes = transposedProgressionChords[0]?.midiNotes || [];
+            midiNotes = firstChordNotes; // Use midiNotes array for consistency
+            notes = firstChordNotes; // Assign MIDI notes to 'notes' too for the display string below? Or keep separate? Let's assign for now.
+        } else {
+            title = 'Loading Progression...';
+            noteNames = '-';
+            formula = '-';
+            notes = '-';
+            midiNotes = [];
         }
     }
   } catch (error) {
@@ -132,15 +160,15 @@ function InfoDisplay({
       notes = [];
       midiNotes = [];
       formula = '-'; // Reset formula on error
+      noteNames = '-'; // Ensure noteNames is reset
   }
 
   // Format the data for display
   const info = {
     title: title,
     formula: `Formula: ${formula || 'N/A'}`,
-    notes: `Notes (MIDI): ${Array.isArray(midiNotes) ? midiNotes.join(', ') : 'N/A'}`,
-    // Ensure we join the 'notes' array (pitch classes) directly, check it's an array first
-    noteNames: `Notes: ${Array.isArray(notes) ? notes.join(', ') : 'N/A'}` 
+    noteNames: `Notes: ${noteNames}`, // Use the prepared noteNames string
+    midiNotesDisplay: `MIDI: ${Array.isArray(midiNotes) ? midiNotes.join(', ') : 'N/A'}` // Use midiNotes for MIDI display
   };
 
   return (
@@ -149,7 +177,7 @@ function InfoDisplay({
       <h3>{info.title}</h3>
       <p>{info.noteNames}</p>
       <p>{info.formula}</p>
-      <p><small>{info.notes}</small></p>
+      <p><small>{info.midiNotesDisplay}</small></p>
     </div>
   );
 }

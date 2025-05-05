@@ -9,6 +9,8 @@ import useDrill from './hooks/useDrill.js'; // <-- Import useDrill
 import useMidiPlayer from './hooks/useMidiPlayer.js'; // <-- Import MIDI Player hook
 import DrillControls from './components/DrillControls'; // <-- Import DrillControls
 import { Scale, Note, Chord, ScaleType, ChordType, PcSet, Interval } from "@tonaljs/tonal"; // Import Tonal functions and Interval
+import { RomanNumeral } from "@tonaljs/tonal"; // <-- Import RomanNumeral
+import progressionData from './data/progressions.json'; // <-- Import progression data
 
 // console.log("Tonal PcSet object:", PcSet);
 // console.log("Tonal Scale object:", Scale); // <-- Add log for Scale object
@@ -23,6 +25,7 @@ const MODES = [
   { value: 'scale_display', label: 'Scale Display' },
   { value: 'chord_search', label: 'Chord Search' },
   { value: 'diatonic_chords', label: 'Diatonic Chords' },
+  { value: 'chord_progression', label: 'Chord Progression' }, // <-- Add new mode
 ];
 const INVERSIONS = [
   { value: 0, label: 'Root Pos' },
@@ -34,40 +37,43 @@ const INVERSIONS = [
 function App() {
   // *** Add Render Counter ***
   const renderCount = useRef(0);
-  useEffect(() => {
-    renderCount.current++;
-    console.log(`App.jsx Render Count: ${renderCount.current}`);
-  }); // No dependency array, runs on every render
-
-  // --- State Management ---
+  // --- State Management --- MOVE ALL useState here ---
   const [currentMode, setCurrentMode] = useState(MODES[0].value); // Default to 'scale_display'
   const [selectedRootNote, setSelectedRootNote] = useState('C');
   const [selectedOctave, setSelectedOctave] = useState(4);
   const [selectedScaleType, setSelectedScaleType] = useState('major');
   const [selectedChordType, setSelectedChordType] = useState('maj7');
-  // Diatonic Chord Mode State
   const [selectedDiatonicDegree, setSelectedDiatonicDegree] = useState(0); // 0-6 index
   const [showSevenths, setShowSevenths] = useState(false);
   const [splitHandVoicing, setSplitHandVoicing] = useState(false);
   const [rhInversion, setRhInversion] = useState(0); // 0-3 index
-  const [splitHandInterval, setSplitHandInterval] = useState(24); // New state: 12 for 1 octave, 24 for 2 octaves
-
-  // --- MIDI Input State (Managed in App.jsx now) ---
-  const [latestMidiEvent, setLatestMidiEvent] = useState(null); 
+  const [splitHandInterval, setSplitHandInterval] = useState(24);
+  const [availableProgressions, setAvailableProgressions] = useState(progressionData);
+  const [selectedProgressionId, setSelectedProgressionId] = useState(progressionData[0]?.id || null);
+  const [latestMidiEvent, setLatestMidiEvent] = useState(null);
   const [activeNotes, setActiveNotes] = useState(new Set());
+  const [isDrillActive, setIsDrillActive] = useState(false);
+  const [drillNumOctaves, setDrillNumOctaves] = useState(1);
+  const [drillRepetitions, setDrillRepetitions] = useState(1);
+  const [drillStyle, setDrillStyle] = useState('ascending');
+  const [drillOptions, setDrillOptions] = useState({});
+  // --- NEW: Voicing State ---
+  const [voicingSplitHand, setVoicingSplitHand] = useState(false);
+  const [voicingLhOctaveOffset, setVoicingLhOctaveOffset] = useState(-12); // Semitones (-12 or -24)
+  const [voicingRhRootless, setVoicingRhRootless] = useState(false);
+  const [voicingUseShell, setVoicingUseShell] = useState(false);
+  const [voicingAddOctaveRoot, setVoicingAddOctaveRoot] = useState(false);
+  // REMOVED redundant state formerly shadowed by useDrill return values
+  // const [currentDrillStep, setCurrentDrillStep] = useState({ expectedMidiNotes: [], type: null, stepIndex: 0, totalSteps: 0 }); 
+  // const [drillScore, setDrillScore] = useState({ correctNotes: 0, incorrectNotes: 0 });
+
   // Memoized array version for props that need it (like PianoKeyboard)
   const activeNotesArray = useMemo(() => Array.from(activeNotes), [activeNotes]);
 
-  // --- Drill State ---
-  const [isDrillActive, setIsDrillActive] = useState(false);
-  // User configurable drill options (set before starting)
-  const [drillNumOctaves, setDrillNumOctaves] = useState(1); // New state for octave range
-  const [drillRepetitions, setDrillRepetitions] = useState(1); // New state for repetitions
-  const [drillStyle, setDrillStyle] = useState('ascending'); // New state for drill order style
-  // Options passed to the active drill instance
-  const [drillOptions, setDrillOptions] = useState({}); // User selections for the current drill
-  const [currentDrillStep, setCurrentDrillStep] = useState({ expectedMidiNotes: [], type: null, stepIndex: 0, totalSteps: 0 });
-  const [drillScore, setDrillScore] = useState({ correctNotes: 0, incorrectNotes: 0 });
+  useEffect(() => {
+    renderCount.current++;
+    console.log(`App.jsx Render Count: ${renderCount.current}`);
+  }); // No dependency array, runs on every render
 
   // --- Calculated Values (Moved Before Hooks that Depend on Them) ---
   const selectedRootWithOctave = useMemo(() => `${selectedRootNote}${selectedOctave}`, [selectedRootNote, selectedOctave]);
@@ -190,21 +196,64 @@ function App() {
                   chordNotes = [...remainingSlice, ...invertedNotes];
               }
 
+              // --- Apply Shell Voicing (AFTER inversion, BEFORE split hand) ---
+              let notesForVoicing = chordNotes; // Start with potentially inverted notes
+              if (voicingUseShell) {
+                   const chordInfo = Chord.get(fullChordName); // Get info from the diatonic name
+                   if (!chordInfo.empty && chordInfo.intervals) {
+                       const intervalsToKeep = new Set(['1P']);
+                       const thirdInterval = chordInfo.intervals.find(ivl => ivl.startsWith('3'));
+                       if (thirdInterval) intervalsToKeep.add(thirdInterval);
+                       const seventhInterval = chordInfo.intervals.find(ivl => ivl.startsWith('7'));
+                       if (seventhInterval) intervalsToKeep.add(seventhInterval);
+
+                       const shellNotes = [];
+                       const originalRootNote = Note.get(correctChordRoot); // Use correct root+octave
+                       for (const interval of intervalsToKeep) {
+                          const noteName = Note.transpose(originalRootNote, interval);
+                          shellNotes.push(noteName);
+                       }
+                       notesForVoicing = shellNotes; // Replace with shell notes
+                       console.log(`App.jsx (Diatonic/Shell): Applied shell voicing to ${fullChordName}. Notes:`, notesForVoicing);
+                   } else {
+                        console.warn(`App.jsx (Diatonic/Shell): Could not get chord info for ${fullChordName} to apply shell voicing. Skipping.`);
+                   }
+              }
+
               // 5. Convert to MIDI
-              let midiNotes = chordNotes.map(Note.midi).filter(Boolean);
+              let midiNotes = notesForVoicing.map(Note.midi).filter(Boolean);
               if (midiNotes.length === 0) continue;
 
               // 6. Apply Split Hand Voicing (using correctChordRootMidi)
               if (splitHandVoicing) {
-                  // Use the MIDI value of the *correctly calculated* chord root 
+                  let rhMidiNotesForSplit = midiNotes; // Notes after potential inversion
+                  
+                  // Apply Rootless RH *before* combining with LH
+                  if (voicingRhRootless) {
+                      // Find the MIDI value of the root note in *this specific octave*
+                      const currentRootMidi = Note.midi(correctChordRoot); 
+                      if (currentRootMidi !== null) {
+                         rhMidiNotesForSplit = midiNotes.filter(note => note !== currentRootMidi);
+                         console.log(`App.jsx (Diatonic/Split/Rootless): RH notes for ${fullChordName} after root ${currentRootMidi} removal:`, rhMidiNotesForSplit);
+                      } else {
+                          console.warn(`App.jsx (Diatonic/Split/Rootless): Could not get MIDI for root ${correctChordRoot} to apply rootless voicing.`);
+                      }
+                  }
+
                   if (correctChordRootMidi !== null && correctChordRootMidi >= splitHandInterval) {
                       const actualLhNote = correctChordRootMidi - splitHandInterval;
-                      currentDegreeChordNotes = [actualLhNote, ...midiNotes];
+                      // Combine LH note with potentially rootless RH notes
+                      if (actualLhNote >= 0 && actualLhNote <= 127) {
+                          currentDegreeChordNotes = [actualLhNote, ...rhMidiNotesForSplit];
+                      } else {
+                          console.warn(`App.jsx (Diatonic/Split): Calculated LH note ${actualLhNote} is out of MIDI range. Using RH notes only.`);
+                          currentDegreeChordNotes = rhMidiNotesForSplit; // Use potentially rootless notes
+                      }
                   } else {
-                      currentDegreeChordNotes = midiNotes; // Fallback if split fails
+                      currentDegreeChordNotes = rhMidiNotesForSplit; // Fallback if split fails, use potentially rootless notes
                   }
               } else {
-                  currentDegreeChordNotes = midiNotes;
+                  currentDegreeChordNotes = midiNotes; // No split hand, use inverted notes
               }
               
               // Filter & sort MIDI notes
@@ -224,8 +273,220 @@ function App() {
   }, [
       scaleName, selectedOctave, selectedRootNote, // <-- Need scale info for intervals/root
       showSevenths, diatonicTriads, diatonicSevenths, // Base chords
-      rhInversion, splitHandVoicing, splitHandInterval // Modifiers
+      rhInversion, splitHandVoicing, splitHandInterval, // Modifiers
+      voicingRhRootless, // <-- Add dependency for rootless logic
+      voicingUseShell, // <-- Add shell dependency
+      voicingAddOctaveRoot // <-- Add octave root dependency
   ]);
+
+  // --- NEW: Transpose Selected Chord Progression ---
+  const calculatedProgressionChords = useMemo(() => {
+    console.log("App.jsx: Recalculating calculatedProgressionChords START", { voicingSplitHand, voicingLhOctaveOffset, voicingRhRootless, voicingUseShell, voicingAddOctaveRoot }); // <-- LOG START
+    console.log(`App.jsx: Recalculating progression chords for ID: ${selectedProgressionId} in key: ${scaleName} octave: ${selectedOctave}`);
+    if (!selectedProgressionId || !availableProgressions.find(p => p.id === selectedProgressionId) || !scaleName || scaleInfo.empty) {
+      console.log("App.jsx: Progression calc returning early: Invalid ID, scale name, scale info, or progression object not found.");
+      return []; // <- Potential exit 1
+    }
+
+    const selectedProg = availableProgressions.find(p => p.id === selectedProgressionId);
+    if (!selectedProg.progression || selectedProg.progression.length === 0) {
+      console.log(`App.jsx: Progression calc returning early: Progression array for ID ${selectedProgressionId} is missing or empty.`);
+      return []; // <- Potential exit 2
+    }
+
+    const chords = [];
+    const scaleNotes = scaleInfo.notes;
+    const scaleDegreeGetter = Scale.degrees(scaleName); // Function to get note for degree
+    const currentDiatonicChords = showSevenths ? diatonicSevenths : diatonicTriads; // Use pre-calculated names
+
+    console.log(`App.jsx: Processing progression: [${selectedProg.progression.join(', ')}] in key ${scaleName}`);
+
+    for (const romanNumeral of selectedProg.progression) { // romanNumeral is a STRING like "I"
+      try {
+        // 1. Analyze the Roman numeral string
+        const analysis = RomanNumeral.get(romanNumeral); // { name: "vi", roman: "vi", step: 5, ... }
+        console.log(`App.jsx: RomanNumeral analysis for "${romanNumeral}":`, analysis); // <-- ADD LOG
+        if (analysis.empty) {
+            console.warn(`App.jsx: Could not analyze Roman numeral: ${romanNumeral}`);
+            chords.push({ roman: romanNumeral, name: `? (${romanNumeral})`, notes: [], midiNotes: [], error: 'Analysis failed' });
+            continue;
+        }
+
+        // 1.5 Check if the step is valid *before* using it with the scale getter
+        if (typeof analysis.step !== 'number' || analysis.step < 0 || analysis.step > 6) { // Check 0-6
+           console.warn(`App.jsx: Roman numeral analysis for "${romanNumeral}" returned an invalid step: ${analysis.step}. Skipping chord generation for this step.`);
+           // TODO: Potentially handle altered roots using analysis.interval? For now, skip.
+           chords.push({ roman: romanNumeral, name: `? (${romanNumeral})`, notes: [], midiNotes: [], error: 'Invalid step from analysis' });
+           continue;
+       }
+
+        // 2. Determine the chord root note name using the scale and step+1
+        const chordRootNote = scaleDegreeGetter(analysis.step + 1); // Use step+1 for 1-based getter
+        if (!chordRootNote) {
+             console.warn(`App.jsx: Could not find scale degree ${analysis.step + 1} for ${scaleName}`);
+             chords.push({ roman: romanNumeral, name: `?${analysis.chordType || ''}`, notes: [], midiNotes: [], error: 'Degree note not found' });
+             continue;
+         }
+
+        // --- Determine Chord Type Alias using PRE-CALCULATED Diatonic Chords --- 
+        const degreeIndex = analysis.step; // 0-based index for arrays
+        const targetDiatonicChords = showSevenths ? diatonicSevenths : diatonicTriads;
+        let chordTypeAlias = '';
+        let fullChordName = `? (${romanNumeral})`; // Default fallback name
+
+        if (degreeIndex >= 0 && degreeIndex < targetDiatonicChords.length && targetDiatonicChords[degreeIndex]) {
+            const diatonicChordName = targetDiatonicChords[degreeIndex];
+            // Validate that the diatonic chord root matches the step's expected root
+            if (diatonicChordName.startsWith(chordRootNote)) {
+                fullChordName = diatonicChordName; // Use the full diatonic name (e.g., Dm7)
+                const chordDataTemp = Chord.get(fullChordName);
+                if (!chordDataTemp.empty && chordDataTemp.aliases?.[0]) {
+                    chordTypeAlias = chordDataTemp.aliases[0]; // Get alias like 'm7'
+                    console.log(`App.jsx: Using diatonic chord ${fullChordName} for ${romanNumeral}. Alias: ${chordTypeAlias}`);
+                } else {
+                    console.warn(`App.jsx: Could not get valid alias from diatonic chord name: ${fullChordName}`);
+                    // Keep fullChordName but alias remains empty, might cause issues later
+                }
+            } else {
+                 console.warn(`App.jsx: Mismatch between expected root ${chordRootNote} (from step ${analysis.step+1}) and diatonic chord root ${diatonicChordName} at index ${degreeIndex}. This might happen with altered chords (bVII etc) or errors.`);
+                 // Attempt fallback using analysis.chordType? Or just fail?
+                 // For now, let's try building from analysis again as a basic fallback for non-diatonic numerals
+                 chordTypeAlias = analysis.chordType || (showSevenths ? '7' : 'M'); // Basic fallback based on numeral type
+                 fullChordName = `${chordRootNote}${chordTypeAlias}`;
+                 console.log(`App.jsx: Using fallback alias ${chordTypeAlias} for ${romanNumeral}. Built name: ${fullChordName}`);
+            }
+        } else {
+             console.warn(`App.jsx: Could not find valid diatonic chord for degree index ${degreeIndex} (from Roman ${romanNumeral}).`);
+             // Fallback for safety
+             chordTypeAlias = analysis.chordType || (showSevenths ? '7' : 'M');
+             fullChordName = `${chordRootNote}${chordTypeAlias}`;
+        }
+
+        if (!chordTypeAlias) {
+            console.warn(`App.jsx: Still couldn't determine valid chord type alias for ${romanNumeral} -> ${fullChordName}`);
+            chords.push({ roman: romanNumeral, name: fullChordName, notes: [], midiNotes: [], error: 'Failed to determine chord type' });
+            continue;
+        }
+
+        // 4. Get chord notes with the correct octave
+        const chordRootWithOctave = `${chordRootNote}${selectedOctave}`; // Assume base octave for now
+        const chordData = Chord.getChord(chordTypeAlias, chordRootWithOctave);
+
+        if (chordData.empty || !chordData.notes || chordData.notes.length === 0) {
+            console.warn(`App.jsx: Failed to get notes for type "${chordTypeAlias}" at root "${chordRootWithOctave}" (derived from ${romanNumeral})`);
+            chords.push({ roman: romanNumeral, name: fullChordName, notes: [], midiNotes: [], error: 'Note generation failed' });
+            continue;
+        }
+
+        // --- Apply RH Inversion BEFORE Split Hand --- 
+        let rhChordNotes = chordData.notes; // Note names with octave
+        if (rhInversion > 0 && rhInversion < rhChordNotes.length) {
+             const inversionSlice = rhChordNotes.slice(0, rhInversion);
+             const remainingSlice = rhChordNotes.slice(rhInversion);
+             const invertedNotes = inversionSlice.map(n => Note.transpose(n, '8P'));
+             rhChordNotes = [...remainingSlice, ...invertedNotes];
+            console.log(`App.jsx (Inversion): Applied RH inversion ${rhInversion} to ${fullChordName}. Notes:`, rhChordNotes);
+        }
+
+        // --- Apply Shell Voicing (AFTER inversion, BEFORE split hand) ---
+        if (voicingUseShell) {
+             const chordInfo = Chord.get(fullChordName); // Get intervals for the full chord name
+             if (!chordInfo.empty && chordInfo.intervals) {
+                 const intervalsToKeep = new Set(['1P']); // Always keep root
+                 // Find 3rd (major or minor)
+                 const thirdInterval = chordInfo.intervals.find(ivl => ivl.startsWith('3'));
+                 if (thirdInterval) intervalsToKeep.add(thirdInterval);
+                 // Find 7th (major, minor, or dominant)
+                 const seventhInterval = chordInfo.intervals.find(ivl => ivl.startsWith('7'));
+                 if (seventhInterval) intervalsToKeep.add(seventhInterval);
+
+                 const shellNotes = [];
+                 const originalRootNote = Note.get(chordRootWithOctave); // Root note object
+                 for (const interval of intervalsToKeep) {
+                    const noteName = Note.transpose(originalRootNote, interval);
+                    shellNotes.push(noteName);
+                 }
+                 rhChordNotes = shellNotes; // Replace with shell notes
+                 console.log(`App.jsx (Shell): Applied shell voicing to ${fullChordName}. Kept intervals: [${Array.from(intervalsToKeep).join(', ')}]. Notes:`, rhChordNotes);
+             } else {
+                 console.warn(`App.jsx (Shell): Could not get chord info for ${fullChordName} to apply shell voicing. Skipping.`);
+             }
+        }
+
+        // 5. Convert notes to MIDI and sort
+        let finalMidiNotes = [];
+        const rootMidiNote = Note.midi(chordRootWithOctave);
+        // rhChordNotes is now potentially inverted
+
+        if (voicingSplitHand && rootMidiNote !== null) {
+            // --- Split Hand Logic --- 
+            const lhNoteMidi = rootMidiNote + voicingLhOctaveOffset;
+            
+            // RH Chord Notes (Potentially Rootless)
+            let rhNotesToConvert = rhChordNotes;
+            if (voicingRhRootless) {
+                // Filter out the root note *name* before MIDI conversion
+                const rootNoteName = Note.pitchClass(chordRootWithOctave);
+                rhNotesToConvert = rhChordNotes.filter(noteName => Note.pitchClass(noteName) !== rootNoteName);
+                console.log(`App.jsx (Split/Rootless): RH notes for ${fullChordName} after root removal:`, rhNotesToConvert);
+            }
+
+            const rhMidiNotes = rhNotesToConvert.map(Note.midi).filter(n => n !== null && n >= 0 && n <= 127);
+            
+            // Combine LH and RH, ensuring LH note is valid
+            if (lhNoteMidi >= 0 && lhNoteMidi <= 127) {
+                finalMidiNotes = [lhNoteMidi, ...rhMidiNotes].sort((a, b) => a - b);
+            } else {
+                console.warn(`App.jsx (Split Hand): Calculated LH note ${lhNoteMidi} is out of MIDI range. Using RH notes only.`);
+                finalMidiNotes = rhMidiNotes.sort((a, b) => a - b);
+            }
+            console.log(`App.jsx (Split Hand): Final MIDI for ${fullChordName}: LH ${lhNoteMidi}, RH [${rhMidiNotes.join(', ')}] -> [${finalMidiNotes.join(', ')}]`);
+
+        } else {
+            // --- Standard Voicing Logic --- 
+             finalMidiNotes = rhChordNotes.map(Note.midi).filter(n => n !== null && n >= 0 && n <= 127).sort((a, b) => a - b);
+             console.log(`App.jsx (Standard): Final MIDI for ${fullChordName}: [${finalMidiNotes.join(', ')}]`);
+        }
+
+        // --- Apply Add Upper Octave Root (AFTER split hand/rootless) ---
+        if (voicingAddOctaveRoot && finalMidiNotes.length > 0) {
+            // Find the lowest MIDI note corresponding to the root pitch class
+            const rootPc = Note.pitchClass(chordRootWithOctave);
+            const lowestRootMidi = finalMidiNotes.find(midi => Note.pitchClass(Note.fromMidi(midi)) === rootPc);
+
+            if (lowestRootMidi !== undefined) {
+                const upperRootMidi = lowestRootMidi + 12;
+                if (upperRootMidi <= 127 && !finalMidiNotes.includes(upperRootMidi)) {
+                    finalMidiNotes.push(upperRootMidi);
+                    finalMidiNotes.sort((a, b) => a - b);
+                    console.log(`App.jsx (Diatonic/Add Oct Root): Added upper octave root (${upperRootMidi}) to ${fullChordName}. Notes before sort: [${finalMidiNotes.join(', ')}]`);
+                }
+            } else {
+                 console.warn(`App.jsx (Diatonic/Add Oct Root): Could not find root note MIDI value in final notes for ${fullChordName} to add octave.`);
+            }
+        }
+
+        console.log(`App.jsx: Successfully processed ${romanNumeral} -> ${fullChordName}. FINAL MIDI: [${finalMidiNotes.join(', ')}]`);
+        chords.push({
+          roman: romanNumeral,
+          name: fullChordName,
+          notes: chordData.notes, // Keep original theoretical notes
+          midiNotes: finalMidiNotes // Use the FINAL calculated MIDI notes with voicing
+        });
+
+      } catch (error) {
+        console.error(`App.jsx: Error processing Roman numeral "${romanNumeral}" in progression "${selectedProg.name}":`, error);
+        chords.push({ roman: romanNumeral, name: `? (${romanNumeral})`, notes: [], midiNotes: [], error: error.message });
+      }
+    }
+    console.log("App.jsx: Finished calculating progression chords:", chords);
+    return chords;
+  }, [
+      selectedProgressionId, availableProgressions, scaleName, scaleInfo, selectedOctave, 
+      showSevenths, diatonicTriads, diatonicSevenths, 
+      voicingSplitHand, voicingLhOctaveOffset, voicingRhRootless,
+      voicingUseShell, voicingAddOctaveRoot
+  ]); // Keep dependencies
 
   // --- MIDI Callback Handlers (Defined in App.jsx) ---
   const handleNoteOn = useCallback((event) => {
@@ -290,7 +551,9 @@ function App() {
     playedNoteEvent: latestMidiEvent, // Pass the state variable from App.jsx
     calculatedDiatonicChordNotes, 
     selectedRootNote, 
-    ROOT_NOTES
+    ROOT_NOTES,
+    // Progression Props for Drill <-- NEW
+    transposedProgressionChords: calculatedProgressionChords
   });
 
   // ** Instantiate useMetronome AFTER useMidi **
@@ -308,6 +571,8 @@ function App() {
 
   // --- Calculated Values ---
   const notesToHighlight = useMemo(() => {
+    console.log("App.jsx: Recalculating notesToHighlight START"); // <-- LOG START
+    console.log("App.jsx: Recalculating notesToHighlight...");
     let calculatedNotes = [];
     const octave = selectedOctave;
     const rootName = selectedRootNote;
@@ -339,6 +604,16 @@ function App() {
             console.warn(`App.jsx - Diatonic Highlight - Pre-calculated notes not available or degree invalid.`);
             calculatedNotes = [];
         }
+      } else if (currentMode === 'chord_progression') {
+        // Highlight all unique notes across all chords in the transposed progression
+        if (calculatedProgressionChords && calculatedProgressionChords.length > 0) {
+            const allMidiNotes = calculatedProgressionChords.flatMap(chord => chord.midiNotes || []);
+            calculatedNotes = [...new Set(allMidiNotes)]; // Use Set to get unique notes
+            console.log(`App.jsx - Progression Highlight - Highlighting notes:`, calculatedNotes);
+        } else {
+             console.log(`App.jsx - Progression Highlight - No transposed chords available.`);
+             calculatedNotes = [];
+        }
       }
     } catch (error) {
       console.error("Error calculating notes:", error);
@@ -357,9 +632,18 @@ function App() {
       selectedChordType, selectedRootNote, // Keep octave here too for chord root
       // Diatonic Chords deps:
       selectedDiatonicDegree, 
-      calculatedDiatonicChordNotes // <-- Add dependency 
-      // Removed other diatonic deps like showSevenths, rhInversion etc. as they are handled in calculatedDiatonicChordNotes
+      calculatedDiatonicChordNotes, // <-- Add dependency 
+      // Progression Mode deps:
+      calculatedProgressionChords, // <-- Depend on the calculated value
+      // Voicing dependencies for highlighting?
+      voicingSplitHand, voicingLhOctaveOffset, voicingRhRootless, 
+      voicingUseShell, voicingAddOctaveRoot
   ]);
+
+  // Find the full selected progression object
+  const selectedProgressionObject = useMemo(() => {
+      return availableProgressions.find(p => p.id === selectedProgressionId);
+  }, [selectedProgressionId, availableProgressions]);
 
   // --- Event Handlers ---
   const handleModeChange = (newMode) => {
@@ -413,6 +697,7 @@ function App() {
       }
   };
   const handleSplitHandVoicingChange = (event) => {
+      console.log("App.jsx: handleSplitHandVoicingChange - Setting splitHandVoicing to:", event.target.checked); // <-- LOG STATE CHANGE
       setSplitHandVoicing(event.target.checked);
   };
   const handleRhInversionChange = (newInversionValue) => {
@@ -470,6 +755,46 @@ function App() {
     setIsDrillActive(startingDrill);
   };
 
+  // New handler for selecting a progression
+  const handleProgressionChange = (newProgressionId) => {
+    if (availableProgressions.find(p => p.id === newProgressionId)) {
+        setSelectedProgressionId(newProgressionId);
+        // Optionally set mode if interacting with progression controls?
+        // if (currentMode !== 'chord_progression') {
+        //     setCurrentMode('chord_progression');
+        // }
+    }
+  };
+
+  // --- NEW: Voicing Handlers ---
+  const handleVoicingSplitHandChange = (event) => {
+    console.log("App.jsx: handleVoicingSplitHandChange - Setting voicingSplitHand to:", event.target.checked); // <-- LOG STATE CHANGE
+    setVoicingSplitHand(event.target.checked);
+    // Reset rootless option if split hand is turned off?
+    if (!event.target.checked) {
+      setVoicingRhRootless(false);
+    }
+  };
+
+  const handleVoicingLhOffsetChange = (newValue) => {
+    const offset = parseInt(newValue, 10);
+    if (offset === -12 || offset === -24) {
+      setVoicingLhOctaveOffset(offset);
+    }
+  };
+
+  const handleVoicingRhRootlessChange = (event) => {
+    setVoicingRhRootless(event.target.checked);
+  };
+
+  const handleVoicingUseShellChange = (event) => {
+    setVoicingUseShell(event.target.checked);
+  };
+
+  const handleVoicingAddOctaveRootChange = (event) => {
+    setVoicingAddOctaveRoot(event.target.checked);
+  };
+
   // console.log('App.jsx - ROOT_NOTES:', ROOT_NOTES);
   // console.log('App.jsx - Notes to Highlight:', notesToHighlight);
 
@@ -497,6 +822,8 @@ function App() {
           diatonicSevenths={diatonicSevenths}
           selectedDiatonicDegree={selectedDiatonicDegree}
           showSevenths={showSevenths}
+          selectedProgression={selectedProgressionObject}
+          transposedProgressionChords={calculatedProgressionChords}
         />
         <Controls
           style={{ flex: 2 }} // Controls takes 2 parts
@@ -543,6 +870,21 @@ function App() {
           onSelectOutput={selectMidiOutput}
           isMidiInitialized={isMidiInitialized}
           sendMidiMessage={sendMidiMessage}
+
+          // Progression Mode Props <-- NEW
+          availableProgressions={availableProgressions}
+          selectedProgressionId={selectedProgressionId}
+          onProgressionChange={handleProgressionChange}
+
+          // Voicing Props <-- NEW
+          voicingSplitHand={voicingSplitHand}
+          voicingLhOctaveOffset={voicingLhOctaveOffset}
+          voicingRhRootless={voicingRhRootless}
+          onVoicingSplitHandChange={handleVoicingSplitHandChange}
+          onVoicingLhOffsetChange={handleVoicingLhOffsetChange}
+          onVoicingRhRootlessChange={handleVoicingRhRootlessChange}
+          onVoicingUseShellChange={handleVoicingUseShellChange}
+          onVoicingAddOctaveRootChange={handleVoicingAddOctaveRootChange}
 
           // Metronome Props
           isMetronomePlaying={isMetronomePlaying}

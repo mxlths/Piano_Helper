@@ -1,0 +1,52 @@
+[
+  {
+    "id": "popular",
+    "name": "The Most Popular (I-V-vi-IV)",
+    "progression": ["I", "V", "vi", "IV"]
+  },
+  {
+    "id": "pachelbel",
+    "name": "Pachelbel's Canon (I-V-vi-iii-IV-I-IV-V)",
+    "progression": ["I", "V", "vi", "iii", "IV", "I", "IV", "V"]
+  },
+  {
+    "id": "effective",
+    "name": "Effective (vi-IV-I-V)",
+    "progression": ["vi", "IV", "I", "V"]
+  },
+  {
+    "id": "magic",
+    "name": "Magic Changes (I-vi-IV-V)",
+    "progression": ["I", "vi", "IV", "V"]
+  },
+  {
+    "id": "gaining",
+    "name": "Gaining Popularity (IV-I-V-vi)",
+    "progression": ["IV", "I", "V", "vi"]
+  },
+  {
+    "id": "mixolydian",
+    "name": "Mixolydian Cadence (I-bVII-IV-I)",
+    "progression": ["I", "bVII", "IV", "I"]
+  },
+  {
+    "id": "flatVI",
+    "name": "♭VI setup (I-♭VI-V-I)",
+    "progression": ["I", "bVI", "V", "I"]
+  },
+  {
+    "id": "flatVII",
+    "name": "♭VII Cadence (e.g., I-♭VII-I)",
+    "progression": ["I", "bVII", "I"]
+  },
+  {
+    "id": "ii-V-I",
+    "name": "Jazz Cadence (ii-V-I)",
+    "progression": ["ii", "V", "I"]
+  },
+  {
+    "id": "iv-V-I",
+    "name": "Plagal Cadence style (I-IV-V-I)",
+    "progression": ["I", "IV", "V", "I"]
+  }
+] 

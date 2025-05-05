@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Note, Scale, Chord } from '@tonaljs/tonal';
 
 // Helper function to shuffle an array (Fisher-Yates algorithm)
@@ -34,7 +34,9 @@ function useDrill({
     playedNoteEvent, // <-- New prop to receive latestNoteOn event
     calculatedDiatonicChordNotes, // <-- New prop with pre-calculated notes
     selectedRootNote, // <-- Need root note for chord search generation
-    ROOT_NOTES // <-- Add ROOT_NOTES prop
+    ROOT_NOTES, // <-- Add ROOT_NOTES prop
+    // Progression Props <-- NEW
+    transposedProgressionChords // Array of { roman, name, notes, midiNotes }
 }) {
 
     // Internal state for the hook (to be expanded)
@@ -44,26 +46,29 @@ function useDrill({
     const [notesPlayedCurrentChordStep, setNotesPlayedCurrentChordStep] = useState(new Set());
     const [currentScore, setCurrentScore] = useState({ correctNotes: 0, incorrectNotes: 0 });
 
+    // Ref to track the timestamp of the last processed MIDI event to prevent infinite loops
+    const processedEventTimestampRef = useRef(null);
+
     // --- Core Functions (Placeholders) ---
 
     const generateDrillSequence = useCallback(() => {
         console.log('useDrill: Generating sequence for mode:', currentMode, 'with options:', drillOptions);
         
-        // --- Perform validation at the start --- 
+        // --- Perform validation inside generate function --- 
         let isValid = false;
         if (currentMode === 'scale_display') {
             const scaleData = Scale.get(scaleName);
             isValid = !scaleData.empty && scaleData.notes;
-            if (!isValid) console.warn("generateDrillSequence: Waiting for valid scale data...");
         } else if (currentMode === 'chord_search') {
             isValid = ROOT_NOTES && ROOT_NOTES.length > 0 && selectedChordType;
-             if (!isValid) console.warn("generateDrillSequence: Waiting for ROOT_NOTES and selectedChordType...");
         } else if (currentMode === 'diatonic_chords') {
             isValid = calculatedDiatonicChordNotes && 
                       calculatedDiatonicChordNotes.length === 7 && 
                       calculatedDiatonicChordNotes.some(notes => Array.isArray(notes) && notes.length > 0);
-            console.log(`useDrill: Initial validation for diatonic_chords. isValid: ${isValid}. Notes received:`, JSON.stringify(calculatedDiatonicChordNotes));
-            if (!isValid) console.warn(`generateDrillSequence: Invalid or empty pre-calculated diatonic notes. Needs 7 arrays, >=1 non-empty.`, calculatedDiatonicChordNotes);
+        } else if (currentMode === 'chord_progression') {
+            isValid = Array.isArray(transposedProgressionChords) && 
+                      transposedProgressionChords.length > 0 && 
+                      transposedProgressionChords.every(c => c && Array.isArray(c.midiNotes) && c.midiNotes.length > 0);
         }
         
         if (!isValid) {
@@ -281,6 +286,44 @@ function useDrill({
                 }
                 // --- End Repetitions ---
                 
+            } else if (currentMode === 'chord_progression') {
+                // --- Chord Progression Drill Generation --- 
+                const { repetitions = 1, style = 'ascending' } = drillOptions;
+                const chordSteps = [];
+
+                console.log(`useDrill: Generating progression drill sequence...`);
+
+                // Create initial steps from the transposed chords
+                transposedProgressionChords.forEach((chordInfo, index) => {
+                    if (chordInfo && chordInfo.midiNotes && chordInfo.midiNotes.length > 0) {
+                        chordSteps.push({
+                            expectedMidiNotes: chordInfo.midiNotes, // Already calculated MIDI notes
+                            type: 'progression_chord',
+                            roman: chordInfo.roman, // Store original Roman numeral
+                            name: chordInfo.name, // Store calculated chord name (e.g., "Am")
+                            progressionIndex: index // Store index within the progression
+                        });
+                    } else {
+                        console.warn(`useDrill: Skipping invalid chord data at index ${index} in progression.`);
+                    }
+                });
+
+                // --- Apply Style (Order) --- 
+                let orderedChordSteps = [...chordSteps]; // Create copy
+                 if (style === 'descending') {
+                     orderedChordSteps.reverse();
+                 } else if (style === 'random') {
+                     orderedChordSteps = shuffleArray(orderedChordSteps);
+                 } // 'ascending' is default, 'thirds' not applicable here
+                // --- End Style ---
+
+                // --- Apply Repetitions ---
+                generatedSequence = [];
+                for (let i = 0; i < repetitions; i++) {
+                    generatedSequence.push(...orderedChordSteps);
+                }
+                // --- End Repetitions ---
+
             } else {
                 console.warn(`useDrill: Unknown drill mode: ${currentMode}`);
                 generatedSequence = [];
@@ -304,7 +347,8 @@ function useDrill({
         showSevenths, splitHandVoicing, splitHandInterval, rhInversion,
         calculatedDiatonicChordNotes, // <-- Add new prop to dependencies
         selectedRootNote, // <-- Need root note for chord search generation
-        ROOT_NOTES // <-- Add ROOT_NOTES to dependency array
+        ROOT_NOTES, // <-- Add ROOT_NOTES to dependency array
+        transposedProgressionChords // <-- Add progression chords dependency
     ]);
 
     // --- REMOVED processMidiInput function ---
@@ -313,15 +357,16 @@ function useDrill({
     // Effect to process played notes when a new event arrives
     useEffect(() => {
         // Ignore if drill isn't active, event is null, or drill finished
-        if (!isDrillActive || !playedNoteEvent || currentStepIndex >= drillSequence.length) {
+        if (!isDrillActive || !playedNoteEvent || currentStepIndex >= drillSequence.length) return;
+        
+        // --- Prevent re-processing the same event --- 
+        if (playedNoteEvent.timestamp === processedEventTimestampRef.current) {
+            // console.log("useDrill: Skipping re-processing of event timestamp:", playedNoteEvent.timestamp); 
             return; 
         }
-        
+
         // Check if the event is a noteon event before processing
-        if (playedNoteEvent.type !== 'noteon') {
-            // console.log(`useDrill: Ignoring event type: ${playedNoteEvent.type}`);
-            return; // Only process noteon for scoring
-        }
+        if (playedNoteEvent.type !== 'noteon') return; // Only process noteon for scoring
         
         console.log("useDrill: Processing noteon event:", playedNoteEvent);
 
@@ -359,7 +404,7 @@ function useDrill({
                 console.log(`useDrill: Incorrect note played. Expected: ${expectedNote}, Got: ${midiNoteNumber}`);
                 setCurrentScore(prev => ({ ...prev, incorrectNotes: prev.incorrectNotes + 1 }));
             }
-        } else if (stepType === 'diatonic_chord' || stepType === 'chord_search_target') {
+        } else if (stepType === 'diatonic_chord' || stepType === 'chord_search_target' || stepType === 'progression_chord') {
             // --- Chord Logic (Applies to both Diatonic and Chord Search steps) --- 
             const expectedNotesSet = new Set(expectedNotes);
 
@@ -399,34 +444,22 @@ function useDrill({
         }
         // --- End Updated Drill Logic ---
 
-    }, [playedNoteEvent, isDrillActive, drillSequence, currentStepIndex, notesPlayedCurrentChordStep]); // Add notesPlayedCurrentChordStep dependency
+        // Mark this event timestamp as processed AFTER all logic is done
+        processedEventTimestampRef.current = playedNoteEvent.timestamp;
+
+    }, [playedNoteEvent, isDrillActive, drillSequence, currentStepIndex, notesPlayedCurrentChordStep]); // Ensure dependencies are correct
 
     // --- Effects ---
 
-    // Effect to generate sequence ONLY when drill becomes active
+    // Effect to generate sequence ONLY when drill becomes active OR dependencies change
     useEffect(() => {
         if (isDrillActive) {
-            // Check if notes are valid *before* calling generate
-            const notesAreValid = calculatedDiatonicChordNotes &&
-                                  calculatedDiatonicChordNotes.length === 7 &&
-                                  calculatedDiatonicChordNotes.some(notes => Array.isArray(notes) && notes.length > 0);
-
-            if (notesAreValid) {
-                console.log("useDrill Effect [isDrillActive, generateDrillSequence, calculatedDiatonicChordNotes]: Drill active AND notes valid, calling generateDrillSequence.");
-                generateDrillSequence(); // Only call if notes are ready
-            } else {
-                console.warn("useDrill Effect [isDrillActive, generateDrillSequence, calculatedDiatonicChordNotes]: Drill active BUT notes are not valid yet. Waiting for notes prop to update.");
-                // Optionally clear sequence if needed, or just wait for next trigger
-                 setDrillSequence([]); // Clear sequence if notes became invalid while active? Or just wait? Let's clear for safety.
-                 setCurrentStepIndex(0);
-                 setNotesPlayedThisStep({ correct: [], incorrect: [] });
-                 setNotesPlayedCurrentChordStep(new Set());
-                 setCurrentScore({ correctNotes: 0, incorrectNotes: 0 });
-            }
+            console.log("useDrill Effect: Drill active, calling generateDrillSequence.");
+            generateDrillSequence();
         } else {
             // Drill stopped or became inactive
             if (drillSequence.length > 0) { 
-                console.log("useDrill Effect [isDrillActive, generateDrillSequence, calculatedDiatonicChordNotes]: Drill stopped, clearing sequence.");
+                console.log("useDrill Effect: Drill stopped or inactive, clearing sequence.");
                 setDrillSequence([]); 
                 setCurrentStepIndex(0);
                 setNotesPlayedThisStep({ correct: [], incorrect: [] });
@@ -434,7 +467,7 @@ function useDrill({
                 setCurrentScore({ correctNotes: 0, incorrectNotes: 0 });
             }
         }
-    }, [isDrillActive, generateDrillSequence, calculatedDiatonicChordNotes]); // <-- Add calculatedDiatonicChordNotes dependency
+    }, [isDrillActive, generateDrillSequence]); 
     
     // We rely on generateDrillSequence being a useCallback with correct dependencies.
     // Now, if its dependencies change WHILE the drill is active, this effect will re-run
@@ -458,12 +491,15 @@ function useDrill({
             stepLabel = Note.fromMidi(currentStepData.expectedMidiNotes[0]);
         } else if (stepType === 'chord_search_target') {
             const root = currentStepData.rootNote;
-            stepLabel = `${root}${selectedChordType} (Octave ${actualOctave})`;
+            stepLabel = `${root}${selectedChordType || ''} (Octave ${actualOctave})`; // Add safety check for selectedChordType
         } else if (stepType === 'diatonic_chord') {
             const targetChords = showSevenths ? diatonicSevenths : diatonicTriads;
             const degreeIndex = currentStepData.degreeIndex;
             const chordName = (targetChords && targetChords[degreeIndex]) ? targetChords[degreeIndex] : 'Unknown Chord';
             stepLabel = `${chordName} (Octave ${actualOctave})`;
+        } else if (stepType === 'progression_chord') {
+            // Use the chord name stored in the step data
+            stepLabel = currentStepData.name || 'Prog Chord?'; 
         }
     }
 
