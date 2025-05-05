@@ -542,6 +542,7 @@ function App() {
           onSelectInput={selectMidiInput}
           onSelectOutput={selectMidiOutput}
           isMidiInitialized={isMidiInitialized}
+          sendMidiMessage={sendMidiMessage}
 
           // Metronome Props
           isMetronomePlaying={isMetronomePlaying}

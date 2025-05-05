@@ -80,7 +80,9 @@ function Controls({
   onPlayMidiFile,
   onPauseMidiFile,
   onStopMidiFile,
-  style // Keep style prop passed from App
+  style, // Keep style prop passed from App
+  // Add sendMidiMessage prop
+  sendMidiMessage
 }) {
 
   const [activeTab, setActiveTab] = useState(TABS[0].id); // Default to 'setup' tab
@@ -441,9 +443,11 @@ function Controls({
             <h4>GM2 Sound Selection</h4>
             <Gm2SoundSelector 
                 // Pass necessary props later, e.g., MIDI output, sending function
+                selectedOutputId={selectedOutputId} // Pass the selected output ID
+                sendMidiMessage={sendMidiMessage} // Pass the sending function
             />
             {/* Placeholder for GM2 controls */}
-            <p>GM2 Sound selection controls will go here.</p> 
+            {/* <p>GM2 Sound selection controls will go here.</p> */}
           </div>
         )}
       </div>
