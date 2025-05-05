@@ -583,13 +583,30 @@ function App() {
         playbackState={playbackState}
         loadedMidiFileName={loadedFileName} // Pass the name of the loaded file
         availableMidiFiles={[
-            // TEMP: Hardcode list for now. Get dynamically later?
-            // Prepend the base path from vite.config.js
-            { name: "Jazz Beat 1", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T007_FullKit_102.mid" },
-            { name: "Jazz Beat 2", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T014_FullKit_104.mid" },
-            { name: "Jazz Beat 3", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T017_FullKit_103.mid" },
-            { name: "9/8 Beat", url: "/Piano_Helper/midi-files/JBB_9-8_NmlStr_T024_FullKit_117.mid" },
-            { name: "12/8 Beat", url: "/Piano_Helper/midi-files/JBB_12-8_NmlStr_T096_FullKit_120.mid" }
+            // Dynamically generated from public/midi-files (needs update if files change)
+            { name: "9-8 NmlStr Tambourine 141", url: "/Piano_Helper/midi-files/JBB_9-8_NmlStr_Tambourine_141.mid" },
+            { name: "4-4 NmlStr Triangles 130", url: "/Piano_Helper/midi-files/JBB_4-4_NmlStr_Triangles_130.mid" },
+            { name: "4-4 NmlStr Toms 129", url: "/Piano_Helper/midi-files/JBB_4-4_NmlStr_Toms_129.mid" },
+            { name: "3-4 NmlStr Shaker 128", url: "/Piano_Helper/midi-files/JBB_3-4_NmlStr_Shaker_128.mid" },
+            { name: "3-4 NmlStr Kicks 127", url: "/Piano_Helper/midi-files/JBB_3-4_NmlStr_Kicks_127.mid" },
+            { name: "3-4 NmlStr HiHats 126", url: "/Piano_Helper/midi-files/JBB_3-4_NmlStr_HiHats_126.mid" },
+            { name: "3-4 NmlStr Cowbell 125", url: "/Piano_Helper/midi-files/JBB_3-4_NmlStr_Cowbell_125.mid" },
+            { name: "3-4 NmlMedSwg Snares 124", url: "/Piano_Helper/midi-files/JBB_3-4_NmlMedSwg_Snares_124.mid" },
+            { name: "3-4 NmlMedSwg Rides 123", url: "/Piano_Helper/midi-files/JBB_3-4_NmlMedSwg_Rides_123.mid" },
+            { name: "2-4 NmlStr Cabasa 122", url: "/Piano_Helper/midi-files/JBB_2-4_NmlStr_Cabasa_122.mid" },
+            { name: "12-8 NmlStr Congas 145", url: "/Piano_Helper/midi-files/JBB_12-8_NmlStr_Congas_145.mid" },
+            { name: "12-8 NmlStr Bongos 144", url: "/Piano_Helper/midi-files/JBB_12-8_NmlStr_Bongos_144.mid" },
+            { name: "9-8 NmlStr T024 FullKit 117", url: "/Piano_Helper/midi-files/JBB_9-8_NmlStr_T024_FullKit_117.mid" },
+            { name: "12-8 NmlStr T096 FullKit 120", url: "/Piano_Helper/midi-files/JBB_12-8_NmlStr_T096_FullKit_120.mid" },
+            { name: "6-8 NmlStr T057 FullKit 115", url: "/Piano_Helper/midi-files/JBB_6-8_NmlStr_T057_FullKit_115.mid" },
+            { name: "4-4 NmlStr T088 FullKit 109", url: "/Piano_Helper/midi-files/JBB_4-4_NmlStr_T088_FullKit_109.mid" },
+            { name: "4-4 NmlStr T009 FullKit 110", url: "/Piano_Helper/midi-files/JBB_4-4_NmlStr_T009_FullKit_110.mid" },
+            { name: "4-4 NmlMedSwg T076 FullKit 108", url: "/Piano_Helper/midi-files/JBB_4-4_NmlMedSwg_T076_FullKit_108.mid" },
+            { name: "4-4 NmlMedSwg T069 FullKit 106", url: "/Piano_Helper/midi-files/JBB_4-4_NmlMedSwg_T069_FullKit_106.mid" },
+            { name: "4-4 NmlMedSwg T008 FullKit 107", url: "/Piano_Helper/midi-files/JBB_4-4_NmlMedSwg_T008_FullKit_107.mid" },
+            { name: "4-4 DblTmMedSwg T017 FullKit 103", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T017_FullKit_103.mid" },
+            { name: "4-4 DblTmMedSwg T014 FullKit 104", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T014_FullKit_104.mid" },
+            { name: "4-4 DblTmMedSwg T007 FullKit 102", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T007_FullKit_102.mid" },
         ]}
         onLoadMidiFile={loadMidiFile}
         onPlayMidiFile={playMidiFile}
