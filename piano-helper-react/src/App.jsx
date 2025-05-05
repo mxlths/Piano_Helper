@@ -7,6 +7,7 @@ import useMidi from './hooks/useMidi'; // Import the custom hook
 import useMetronome from './hooks/useMetronome.js'; // Import the metronome hook
 import useDrill from './hooks/useDrill.js'; // <-- Import useDrill
 import useMidiPlayer from './hooks/useMidiPlayer.js'; // <-- Import MIDI Player hook
+import DrillControls from './components/DrillControls'; // <-- Import DrillControls
 import { Scale, Note, Chord, ScaleType, ChordType, PcSet, Interval } from "@tonaljs/tonal"; // Import Tonal functions and Interval
 
 // console.log("Tonal PcSet object:", PcSet);
@@ -516,10 +517,10 @@ function App() {
         expectedNotes={isDrillActive ? drillStepData.expectedMidiNotes : []} // <-- Pass expected notes
         lowestNote={48} // Example: C3
       />
-      {/* Flex container for Info and Controls */}
+      {/* Flex container for Info, Controls, and Drills */}
       <div style={{ display: 'flex', gap: '20px', marginTop: '10px', alignItems: 'flex-start' }}>
         <InfoDisplay
-          style={{ flex: 1 }} // Assign flex properties (adjust as needed)
+          style={{ flex: 1 }} // InfoDisplay takes 1 part
           selectedRoot={selectedRootWithOctave}
           selectedScaleType={selectedScaleType}
           selectedChordType={selectedChordType}
@@ -530,7 +531,7 @@ function App() {
           showSevenths={showSevenths}
         />
         <Controls
-          style={{ flex: 2 }} // Assign flex properties (adjust as needed)
+          style={{ flex: 2 }} // Controls takes 2 parts
           // Mode
           modes={MODES}
           currentMode={currentMode}
@@ -634,6 +635,20 @@ function App() {
           onPlayMidiFile={playMidiFile}
           onPauseMidiFile={pauseMidiFile}
           onStopMidiFile={stopMidiFile}
+        />
+        <DrillControls 
+          style={{ flex: 1 }} // DrillControls takes 1 part
+          currentMode={currentMode} // Pass mode for style disabling
+          isDrillActive={isDrillActive}
+          setIsDrillActive={handleDrillToggle} // Use the toggle handler
+          drillNumOctaves={drillNumOctaves}
+          drillRepetitions={drillRepetitions}
+          drillStyle={drillStyle}
+          onDrillOctavesChange={handleDrillOctavesChange}
+          onDrillRepetitionsChange={handleDrillRepetitionsChange}
+          onDrillStyleChange={handleDrillStyleChange}
+          currentDrillStep={drillStepData}
+          drillScore={currentDrillScore}
         />
       </div>
       <MidiMonitorDisplay

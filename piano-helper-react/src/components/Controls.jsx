@@ -14,7 +14,6 @@ const TABS = [
   { id: 'setup', label: 'Setup' },
   { id: 'metronome', label: 'Metronome' },
   { id: 'backingTrack', label: 'Backing Track' },
-  { id: 'drills', label: 'Drills' },
 ];
 
 function Controls({ 
@@ -71,22 +70,6 @@ function Controls({
   onChangeMetronomeTempo,
   onChangeMetronomeSound,
   onChangeMetronomeTimeSignature,
-  // --- Drill Props ---
-  isDrillActive,
-  setIsDrillActive,
-  drillOptions,
-  setDrillOptions,
-  currentDrillStep,
-  drillScore,
-  // New props for drill config
-  drillNumOctaves,
-  drillRepetitions,
-  onDrillOctavesChange,
-  onDrillRepetitionsChange,
-  // Add style props
-  drillStyle,
-  onDrillStyleChange,
-
   // --- MIDI Player Props ---
   playbackState, // 'stopped', 'playing', 'paused'
   loadedMidiFileName,
@@ -94,7 +77,8 @@ function Controls({
   onLoadMidiFile,
   onPlayMidiFile,
   onPauseMidiFile,
-  onStopMidiFile
+  onStopMidiFile,
+  style // Keep style prop passed from App
 }) {
 
   const [activeTab, setActiveTab] = useState(TABS[0].id); // Default to 'setup' tab
@@ -450,75 +434,10 @@ function Controls({
         )}
 
         {/* === Drills Tab === */} 
-        {activeTab === 'drills' && (
-           <div style={{ border: 'none', padding: '0' }}> {/* Remove border/padding from original flex item */} 
-              <h4>Drill Controls</h4>
-              <div>
-                  <label htmlFor="drill-octaves" style={{ marginRight: '10px' }}>Octaves (Range):</label>
-                  <input 
-                     type="number" 
-                     id="drill-octaves" 
-                     value={drillNumOctaves} 
-                     onChange={onDrillOctavesChange} 
-                     min="1" 
-                     max="4" // Match limit in App.jsx
-                     disabled={isDrillActive} 
-                     style={{ width: '50px', marginRight: '20px' }}
-                  />
-
-                   <label htmlFor="drill-style" style={{ marginRight: '10px' }}>Style:</label>
-                   <select 
-                      id="drill-style"
-                      value={drillStyle}
-                      onChange={onDrillStyleChange}
-                      disabled={isDrillActive} 
-                      style={{ marginRight: '20px' }}
-                   >
-                      {DRILL_STYLES.map(styleOpt => (
-                          <option 
-                             key={styleOpt.value} 
-                             value={styleOpt.value}
-                             // Disable "Thirds" if not in scale mode
-                             disabled={styleOpt.value === 'thirds' && currentMode !== 'scale_display'}
-                          >
-                              {styleOpt.label}
-                          </option>
-                      ))}
-                   </select>
-
-                   <label htmlFor="drill-repetitions" style={{ marginRight: '10px' }}>Repetitions:</label>
-                   <input 
-                      type="number" 
-                      id="drill-repetitions" 
-                      value={drillRepetitions} 
-                      onChange={onDrillRepetitionsChange} 
-                      min="1" 
-                      max="10" // Match limit in App.jsx
-                      disabled={isDrillActive}
-                      style={{ width: '50px', marginRight: '20px' }}
-                   />
-
-                   <button onClick={setIsDrillActive} style={{ marginLeft: '20px' }}>
-                       {isDrillActive ? 'Stop Drill' : 'Start Drill'}
-                   </button>
-              </div>
-              {isDrillActive && (
-                  <div style={{ marginTop: '10px' }}>
-                     <span>Step: {currentDrillStep?.stepIndex !== undefined ? currentDrillStep.stepIndex + 1 : '-'} / {currentDrillStep?.totalSteps || '-'} | </span>
-                      <span>Score: Correct: {drillScore?.correctNotes || 0}, Incorrect: {drillScore?.incorrectNotes || 0}</span>
-                      <p style={{ fontWeight: 'bold', marginTop: '5px' }}>
-                         Current: {currentDrillStep?.stepLabel || 'Loading...'}
-                      </p>
-                      {/* Optionally display expected notes for debugging:
-                      <p>Expected: {currentDrillStep?.expectedMidiNotes?.join(', ')}</p>
-                      */}
-                 </div>
-              )}
-           </div>
-        )}
+        {/* Drills tab content removed */}
       </div>
 
-    </div>
+    </div> // End of main Controls div
   );
 }
 
