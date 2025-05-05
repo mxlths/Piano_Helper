@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import Controls from './components/Controls';
 import InfoDisplay from './components/InfoDisplay';
 import MidiMonitorDisplay from './components/MidiMonitorDisplay';
 import PianoKeyboard from './components/PianoKeyboard';
 import useMidi from './hooks/useMidi'; // Import the custom hook
 import useMetronome from './hooks/useMetronome.js'; // Import the metronome hook
+import useDrill from './hooks/useDrill.js'; // <-- Import useDrill
 import { Scale, Note, Chord, ScaleType, ChordType, PcSet, Interval } from "@tonaljs/tonal"; // Import Tonal functions and Interval
 
 console.log("Tonal PcSet object:", PcSet);
@@ -42,40 +43,23 @@ function App() {
   const [rhInversion, setRhInversion] = useState(0); // 0-3 index
   const [splitHandInterval, setSplitHandInterval] = useState(24); // New state: 12 for 1 octave, 24 for 2 octaves
 
-  // MIDI state and functions from our custom hook
-  const {
-    isInitialized: isMidiInitialized, // Rename for clarity
-    inputs: midiInputs,
-    outputs: midiOutputs,
-    selectedInputId,
-    selectedOutputId,
-    logMessages: midiLogMessages,
-    selectInput: selectMidiInput, // Rename for clarity
-    selectOutput: selectMidiOutput, // Rename for clarity
-    sendMessage: sendMidiMessage, // Import sendMessage
-  } = useMidi();
+  // --- MIDI Input State ---
+  // REMOVED: const [activeMidiNotes, setActiveMidiNotes] = useState(new Set()); // Now handled in useMidi
 
-  // Metronome state and functions
-  const {
-    isPlaying: isMetronomePlaying,
-    bpm: metronomeBpm,
-    selectedSoundNote: metronomeSoundNote,
-    availableSounds: metronomeSounds,
-    timeSignature: metronomeTimeSignature,
-    togglePlay: toggleMetronomePlay,
-    changeTempo: changeMetronomeTempo,
-    changeSound: changeMetronomeSound,
-    changeTimeSignature: changeMetronomeTimeSignature,
-  } = useMetronome(sendMidiMessage); // Pass the sendMessage function
+  // --- Drill State ---
+  const [isDrillActive, setIsDrillActive] = useState(false);
+  const [drillOptions, setDrillOptions] = useState({}); // User selections for the current drill
+  const [currentDrillStep, setCurrentDrillStep] = useState({ expectedMidiNotes: [], type: null, stepIndex: 0, totalSteps: 0 });
+  const [drillScore, setDrillScore] = useState({ correctNotes: 0, incorrectNotes: 0 });
 
-  // --- Calculated Values ---
+  // --- Calculated Values (Moved Before Hooks that Depend on Them) ---
   const selectedRootWithOctave = useMemo(() => `${selectedRootNote}${selectedOctave}`, [selectedRootNote, selectedOctave]);
   const rootNoteMidi = useMemo(() => Note.midi(selectedRootWithOctave), [selectedRootWithOctave]);
   const scaleName = useMemo(() => `${selectedRootNote} ${selectedScaleType}`, [selectedRootNote, selectedScaleType]);
   const scaleInfo = useMemo(() => {
       const info = Scale.get(scaleName);
       return info;
-  }, [scaleName]); 
+  }, [scaleName]);
 
   // Get FULL diatonic triad and seventh chord names
   const diatonicTriads = useMemo(() => {
@@ -125,6 +109,139 @@ function App() {
      }
   }, [scaleName]); // Depend only on scaleName
 
+  // --- Calculated Diatonic Chord Notes (Moved Up for Drills) ---
+  const calculatedDiatonicChordNotes = useMemo(() => {
+      console.log("App.jsx: Recalculating MIDI notes for all diatonic chords...");
+      const octave = selectedOctave;
+      const targetChords = showSevenths ? diatonicSevenths : diatonicTriads;
+      const allChordNotes = [];
+
+      if (!Array.isArray(targetChords) || targetChords.length < 7) {
+          console.warn("App.jsx - Diatonic Drill Calc - Waiting for valid base chords.");
+          return []; // Return empty if base chords aren't ready
+      }
+
+      for (let degree = 0; degree < 7; degree++) {
+          let currentDegreeChordNotes = []; // MIDI notes for this specific degree
+          const fullChordName = targetChords[degree];
+          if (!fullChordName) continue; // Skip if name invalid
+
+          try {
+              const chordDataForRoot = Chord.get(fullChordName);
+              if (chordDataForRoot.empty) continue;
+              const chordRootName = chordDataForRoot.tonic;
+              const chordRootWithOctave = `${chordRootName}${octave}`;
+              const chordRootMidi = Note.midi(chordRootWithOctave);
+              if (!chordRootMidi) continue;
+
+              const chordTypeAlias = chordDataForRoot.aliases?.[0];
+              if (!chordTypeAlias) continue;
+
+              const chordData = Chord.getChord(chordTypeAlias, chordRootWithOctave);
+              if (!chordData || !Array.isArray(chordData.notes) || chordData.notes.length === 0) continue;
+
+              let chordNotes = chordData.notes; // Note names with correct octave
+
+              // Apply RH Inversion (same logic as notesToHighlight)
+              if (rhInversion > 0 && rhInversion < chordNotes.length) {
+                  const inversionSlice = chordNotes.slice(0, rhInversion);
+                  const remainingSlice = chordNotes.slice(rhInversion);
+                  const invertedNotes = inversionSlice.map(n => Note.transpose(n, '8P'));
+                  chordNotes = [...remainingSlice, ...invertedNotes];
+              }
+
+              let midiNotes = chordNotes.map(Note.midi).filter(Boolean);
+              if (midiNotes.length === 0) continue;
+
+              // Apply Split Hand Voicing (same logic as notesToHighlight)
+              if (splitHandVoicing) {
+                  const chordRootMidiValue = Note.midi(chordRootWithOctave);
+                  if (chordRootMidiValue !== null && chordRootMidiValue >= splitHandInterval) {
+                      const actualLhNote = chordRootMidiValue - splitHandInterval;
+                      currentDegreeChordNotes = [actualLhNote, ...midiNotes];
+                  } else {
+                      currentDegreeChordNotes = midiNotes; // Fallback if split fails
+                  }
+              } else {
+                  currentDegreeChordNotes = midiNotes;
+              }
+              
+              // Filter just in case & ensure sort order for comparison later?
+               currentDegreeChordNotes = currentDegreeChordNotes.filter(n => n !== null && n >= 0 && n <= 127).sort((a,b)=> a-b);
+
+          } catch (error) {
+              console.error(`Error calculating notes for degree ${degree} (${fullChordName}):`, error);
+              currentDegreeChordNotes = []; // Reset on error for this degree
+          }
+          
+          allChordNotes.push(currentDegreeChordNotes); 
+      }
+
+      console.log("App.jsx: Finished calculating MIDI notes for diatonic chords:", allChordNotes);
+      return allChordNotes; // Should be array of 7 arrays (some might be empty if errors occurred)
+
+  }, [
+      selectedOctave, showSevenths, diatonicTriads, diatonicSevenths, // Base chords
+      rhInversion, splitHandVoicing, splitHandInterval // Modifiers
+  ]);
+
+  // --- Instantiate Hooks ---
+
+  // ** Call useMidi FIRST to get latestNoteOn/Off **
+  const {
+    isInitialized: isMidiInitialized,
+    inputs: midiInputs,
+    outputs: midiOutputs,
+    selectedInputId,
+    selectedOutputId,
+    logMessages: midiLogMessages,
+    selectInput: selectMidiInput,
+    selectOutput: selectMidiOutput,
+    sendMessage: sendMidiMessage,
+    latestNoteOn, // <-- Get latest Note On event (for drill trigger)
+    activeNotes // <-- Get managed active notes directly
+  } = useMidi(); // <-- No callbacks passed
+
+  // Log activeNotes on every render of App
+  console.log("App.jsx render - activeNotes:", activeNotes);
+
+  // ** Instantiate useDrill AFTER useMidi **
+  const {
+      currentDrillStep: drillStepData, // Rename to avoid conflict
+      drillScore: currentDrillScore, // Rename
+      notesPlayedThisStep, // Keep this? Or remove if unused?
+      // processMidiInput // No longer needed/returned from useDrill
+  } = useDrill({
+      isDrillActive,
+      currentMode,
+      drillOptions,
+      scaleName,
+      selectedChordType,
+      diatonicTriads,
+      diatonicSevenths,
+      selectedOctave,
+      showSevenths,
+      splitHandVoicing,
+      splitHandInterval,
+      rhInversion,
+      playedNoteEvent: latestNoteOn, // <-- Pass latestNoteOn event here
+      calculatedDiatonicChordNotes // <-- Pass pre-calculated chord notes
+  });
+
+  // Metronome state and functions
+  const {
+    isPlaying: isMetronomePlaying,
+    bpm: metronomeBpm,
+    selectedSoundNote: metronomeSoundNote,
+    availableSounds: metronomeSounds,
+    timeSignature: metronomeTimeSignature,
+    togglePlay: toggleMetronomePlay,
+    changeTempo: changeMetronomeTempo,
+    changeSound: changeMetronomeSound,
+    changeTimeSignature: changeMetronomeTimeSignature,
+  } = useMetronome(sendMidiMessage); // Pass the sendMessage function
+
+  // --- Calculated Values ---
   const notesToHighlight = useMemo(() => {
     let calculatedNotes = [];
     const octave = selectedOctave;
@@ -235,7 +352,7 @@ function App() {
     }
 
     // Filter final notes
-    // console.log('App.jsx - notesToHighlight before filter:', calculatedNotes); // Keep this log too
+    // console.log('App.jsx - notesToHighlight before filter:', calculatedNotes);
     return calculatedNotes.filter(n => n !== null && n >= 0 && n <= 127);
 
   }, [currentMode, selectedRootNote, selectedOctave, selectedScaleType, selectedChordType, rootNoteMidi, scaleName, diatonicTriads, diatonicSevenths, selectedDiatonicDegree, showSevenths, splitHandVoicing, rhInversion, splitHandInterval]);
@@ -311,6 +428,10 @@ function App() {
     }
   };
 
+  const handleDrillToggle = () => {
+    setIsDrillActive(!isDrillActive);
+  };
+
   console.log('App.jsx - ROOT_NOTES:', ROOT_NOTES);
   // console.log('App.jsx - Notes to Highlight:', notesToHighlight);
 
@@ -372,19 +493,30 @@ function App() {
         onChangeMetronomeTempo={changeMetronomeTempo}
         onChangeMetronomeSound={changeMetronomeSound}
         onChangeMetronomeTimeSignature={changeMetronomeTimeSignature}
+
+        // --- Drill Props ---
+        isDrillActive={isDrillActive}
+        setIsDrillActive={handleDrillToggle}
+        drillOptions={drillOptions}
+        setDrillOptions={setDrillOptions}
+        currentDrillStep={drillStepData}
+        drillScore={currentDrillScore}
       />
       <PianoKeyboard
-        rootNote={rootNoteMidi} // Keep highlighting the scale root for context?
+        rootNote={rootNoteMidi}
         notesToHighlight={notesToHighlight}
+        octaveRange={OCTAVES}
+        playedNotes={activeNotes} // <-- Pass activeNotes from useMidi directly
+        expectedNotes={isDrillActive ? drillStepData.expectedMidiNotes : []} // <-- Pass expected notes
+        lowestNote={48} // Example: C3
       />
       <InfoDisplay
-        // Pass necessary state for diatonic mode display - CORRECTED
         selectedRoot={selectedRootWithOctave}
         selectedScaleType={selectedScaleType}
         selectedChordType={selectedChordType}
         currentMode={currentMode}
-        diatonicTriads={diatonicTriads} // Pass the calculated triads
-        diatonicSevenths={diatonicSevenths} // Pass the calculated sevenths
+        diatonicTriads={diatonicTriads}
+        diatonicSevenths={diatonicSevenths}
         selectedDiatonicDegree={selectedDiatonicDegree}
         showSevenths={showSevenths}
       />

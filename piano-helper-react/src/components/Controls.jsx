@@ -55,6 +55,13 @@ function Controls({
   onChangeMetronomeTempo,
   onChangeMetronomeSound,
   onChangeMetronomeTimeSignature,
+  // --- Drill Props ---
+  isDrillActive,
+  setIsDrillActive,
+  drillOptions,
+  setDrillOptions,
+  currentDrillStep,
+  drillScore
 }) {
 
   console.log('Controls.jsx - Received diatonicTriads prop:', diatonicTriads);
@@ -323,6 +330,43 @@ function Controls({
         {!selectedOutputId && isMidiInitialized && 
             <p><small>Select a MIDI Output device to enable Metronome.</small></p>}
       </div>
+
+      {/* --- Drills Section (Conditional) --- */}
+      {(currentMode === 'scale_display' || currentMode === 'chord_search' || currentMode === 'diatonic_chords') && (
+        <div style={{ marginTop: '15px', borderTop: '1px solid #ccc', paddingTop: '10px'}}>
+          <h4>Drills</h4>
+          {isDrillActive ? (
+            // --- Active Drill Display ---
+            <div>
+              <button onClick={() => setIsDrillActive(false)}>Stop Drill</button>
+              <p style={{ marginTop: '10px' }}>
+                Progress: {currentDrillStep?.stepIndex || 0} / {currentDrillStep?.totalSteps || 0}
+                <br />
+                Score: {drillScore?.correctNotes || 0} Correct / {drillScore?.incorrectNotes || 0} Incorrect
+              </p>
+              {/* Placeholder for active drill info/options if needed */}
+            </div>
+          ) : (
+            // --- Drill Setup ---
+            <div>
+              <button onClick={() => {
+                // TODO: Gather options from future UI elements here
+                const currentOptions = {
+                   mode: currentMode,
+                   // Add default/placeholder options based on mode later
+                };
+                setDrillOptions(currentOptions); // Set options before starting
+                setIsDrillActive(true); // Start the drill
+              }}>
+                Start Drill
+              </button>
+              {/* Placeholder for drill options UI */}
+              <p style={{marginTop: '5px'}}><small>Configure drill options below (coming soon).</small></p>
+            </div>
+          )}
+        </div>
+      )}
+
     </div>
   );
 }

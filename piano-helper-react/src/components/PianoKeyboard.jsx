@@ -1,8 +1,10 @@
 import React, { useRef, useEffect } from 'react';
 
-function PianoKeyboard({ rootNote, notesToHighlight = [] }) {
+function PianoKeyboard({ rootNote, notesToHighlight = [], playedNotes = [], expectedNotes = [] }) {
   const canvasRef = useRef(null);
   console.log('PianoKeyboard received notesToHighlight:', notesToHighlight);
+  console.log('PianoKeyboard received playedNotes:', playedNotes);
+  console.log('PianoKeyboard received expectedNotes:', expectedNotes);
   const startNote = 36; // C2 - Lowered for split hand voicing
   const numOctaves = 3; // Increased to 3 octaves
   const numWhiteKeys = 7 * numOctaves + 1; // Include the C at the end of the second octave
@@ -24,6 +26,8 @@ function PianoKeyboard({ rootNote, notesToHighlight = [] }) {
     const keyBorderColor = '#cccccc';
     const highlightColor = '#a0d2ff'; // Light blue for scale notes
     const rootHighlightColor = '#4a90e2'; // Stronger blue for root note
+    const activePlayColor = '#90ee90'; // Light green for actively played notes
+    const expectedNoteColor = '#ffa500'; // Orange for the next expected note(s)
 
     // Clear canvas
     context.fillStyle = whiteKeyColor;
@@ -45,8 +49,17 @@ function PianoKeyboard({ rootNote, notesToHighlight = [] }) {
         const keyHeight = whiteKeyHeight;
         const isRoot = midiNote === rootNote;
         const isHighlighted = notesToHighlight.includes(midiNote);
+        const isActive = playedNotes.includes(midiNote);
+        const isExpected = expectedNotes.includes(midiNote);
 
-        context.fillStyle = (isRoot && isHighlighted) ? rootHighlightColor : (isHighlighted ? highlightColor : whiteKeyColor);
+        // Determine fill color priority: Active > Expected > Root > Highlight > Default
+        let fillColor = whiteKeyColor;
+        if (isHighlighted) fillColor = highlightColor;
+        if (isRoot && isHighlighted) fillColor = rootHighlightColor; // Root takes precedence over regular highlight
+        if (isExpected) fillColor = expectedNoteColor; // Expected overrides blue highlights
+        if (isActive) fillColor = activePlayColor; // Active overrides all others
+
+        context.fillStyle = fillColor;
         context.fillRect(keyX, 0, keyWidth, keyHeight);
         context.strokeStyle = keyBorderColor;
         context.strokeRect(keyX, 0, keyWidth, keyHeight);
@@ -74,8 +87,17 @@ function PianoKeyboard({ rootNote, notesToHighlight = [] }) {
            const blackMidiNote = midiNote + 1;
            const isRoot = blackMidiNote === rootNote;
            const isHighlighted = notesToHighlight.includes(blackMidiNote);
+           const isActive = playedNotes.includes(blackMidiNote);
+           const isExpected = expectedNotes.includes(blackMidiNote);
 
-           context.fillStyle = (isRoot && isHighlighted) ? rootHighlightColor : (isHighlighted ? highlightColor : blackKeyColor);
+           // Determine fill color priority: Active > Expected > Root > Highlight > Default
+           let fillColor = blackKeyColor;
+           if (isHighlighted) fillColor = highlightColor;
+           if (isRoot && isHighlighted) fillColor = rootHighlightColor;
+           if (isExpected) fillColor = expectedNoteColor;
+           if (isActive) fillColor = activePlayColor;
+
+           context.fillStyle = fillColor;
            context.fillRect(blackKeyX, 0, blackKeyWidth, blackKeyHeight);
            // Optionally add border to black keys
            context.strokeStyle = keyBorderColor;
@@ -94,7 +116,7 @@ function PianoKeyboard({ rootNote, notesToHighlight = [] }) {
     // context.textAlign = 'center';
     // context.fillText('Piano Keyboard Canvas', canvas.width / 2, canvas.height / 2);
 
-  }, [rootNote, notesToHighlight, startNote, numOctaves]); // Redraw when props change
+  }, [rootNote, notesToHighlight, startNote, numOctaves, playedNotes, expectedNotes]); // Redraw when props change
 
   return (
     <div style={{ border: '1px solid green', padding: '10px', margin: '10px 0' }}>
