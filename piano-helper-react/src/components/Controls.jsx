@@ -61,7 +61,12 @@ function Controls({
   drillOptions,
   setDrillOptions,
   currentDrillStep,
-  drillScore
+  drillScore,
+  // New props for drill config
+  drillNumOctaves,
+  drillRepetitions,
+  onDrillOctavesChange,
+  onDrillRepetitionsChange
 }) {
 
   console.log('Controls.jsx - Received diatonicTriads prop:', diatonicTriads);
@@ -331,41 +336,48 @@ function Controls({
             <p><small>Select a MIDI Output device to enable Metronome.</small></p>}
       </div>
 
-      {/* --- Drills Section (Conditional) --- */}
-      {(currentMode === 'scale_display' || currentMode === 'chord_search' || currentMode === 'diatonic_chords') && (
-        <div style={{ marginTop: '15px', borderTop: '1px solid #ccc', paddingTop: '10px'}}>
-          <h4>Drills</h4>
-          {isDrillActive ? (
-            // --- Active Drill Display ---
-            <div>
-              <button onClick={() => setIsDrillActive(false)}>Stop Drill</button>
-              <p style={{ marginTop: '10px' }}>
-                Progress: {currentDrillStep?.stepIndex || 0} / {currentDrillStep?.totalSteps || 0}
-                <br />
-                Score: {drillScore?.correctNotes || 0} Correct / {drillScore?.incorrectNotes || 0} Incorrect
-              </p>
-              {/* Placeholder for active drill info/options if needed */}
+      {/* --- Drill Controls --- */}
+      <div style={{ marginTop: '20px', borderTop: '1px solid #ccc', paddingTop: '15px' }}>
+         <h4>Drill Controls</h4>
+         <div>
+             <label htmlFor="drill-octaves" style={{ marginRight: '10px' }}>Octaves (Range):</label>
+             <input 
+                type="number" 
+                id="drill-octaves" 
+                value={drillNumOctaves} 
+                onChange={onDrillOctavesChange} 
+                min="1" 
+                max="4" // Match limit in App.jsx
+                disabled={isDrillActive} 
+                style={{ width: '50px', marginRight: '20px' }}
+             />
+
+             <label htmlFor="drill-repetitions" style={{ marginRight: '10px' }}>Repetitions:</label>
+             <input 
+                type="number" 
+                id="drill-repetitions" 
+                value={drillRepetitions} 
+                onChange={onDrillRepetitionsChange} 
+                min="1" 
+                max="10" // Match limit in App.jsx
+                disabled={isDrillActive}
+                style={{ width: '50px', marginRight: '20px' }}
+             />
+
+             <button onClick={setIsDrillActive} style={{ marginLeft: '20px' }}>
+                 {isDrillActive ? 'Stop Drill' : 'Start Drill'}
+             </button>
+         </div>
+         {isDrillActive && (
+             <div style={{ marginTop: '10px' }}>
+                <span>Step: {currentDrillStep?.stepIndex !== undefined ? currentDrillStep.stepIndex + 1 : '-'} / {currentDrillStep?.totalSteps || '-'} | </span>
+                 <span>Score: Correct: {drillScore?.correctNotes || 0}, Incorrect: {drillScore?.incorrectNotes || 0}</span>
+                 {/* Optionally display expected notes for debugging:
+                 <p>Expected: {currentDrillStep?.expectedMidiNotes?.join(', ')}</p>
+                 */}
             </div>
-          ) : (
-            // --- Drill Setup ---
-            <div>
-              <button onClick={() => {
-                // TODO: Gather options from future UI elements here
-                const currentOptions = {
-                   mode: currentMode,
-                   // Add default/placeholder options based on mode later
-                };
-                setDrillOptions(currentOptions); // Set options before starting
-                setIsDrillActive(true); // Start the drill
-              }}>
-                Start Drill
-              </button>
-              {/* Placeholder for drill options UI */}
-              <p style={{marginTop: '5px'}}><small>Configure drill options below (coming soon).</small></p>
-            </div>
-          )}
-        </div>
-      )}
+         )}
+      </div>
 
     </div>
   );

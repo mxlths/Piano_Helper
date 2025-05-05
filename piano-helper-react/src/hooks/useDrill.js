@@ -74,10 +74,11 @@ function useDrill({
                 }));
 
             } else if (currentMode === 'chord_search') {
-                // --- Chord Search Drill Generation (Iterating through Roots) ---
+                // --- Chord Search Drill Generation (Iterating through Roots & Octaves) ---
                 console.log("useDrill: Generating sequence for Chord Search mode (all roots)...");
-                const { repetitions = 1 } = drillOptions;
-                const chordSteps = []; // Array to hold the steps for each root
+                // Get octave range and repetitions from options
+                const { octaves = 1, repetitions = 1 } = drillOptions;
+                const chordSteps = []; // Array to hold the steps for each root/octave combo
 
                 if (!ROOT_NOTES || ROOT_NOTES.length === 0) {
                     console.error("useDrill: ROOT_NOTES array is missing or empty.");
@@ -89,14 +90,14 @@ function useDrill({
                 }
 
                 for (const root of ROOT_NOTES) {
-                    const rootWithOctave = `${root}${selectedOctave}`;
-                    let targetChordNotes = [];
+                    const rootWithOctave = `${root}${selectedOctave}`; // Base octave
+                    let baseChordMidiNotes = [];
 
                     try {
                         const chordData = Chord.getChord(selectedChordType, rootWithOctave);
                         if (chordData.empty || !Array.isArray(chordData.notes) || chordData.notes.length === 0) {
                             console.warn(`useDrill: Could not get valid notes for chord ${selectedChordType} at ${rootWithOctave}`);
-                            continue; // Skip this root if chord data is invalid
+                            continue; // Skip this root 
                         }
                         
                         let chordNotes = chordData.notes; // Note names with correct octave
@@ -109,19 +110,28 @@ function useDrill({
                             chordNotes = [...remainingSlice, ...invertedNotes];
                         }
 
-                        targetChordNotes = chordNotes.map(Note.midi).filter(Boolean).sort((a,b) => a-b);
+                        baseChordMidiNotes = chordNotes.map(Note.midi).filter(Boolean).sort((a,b) => a-b);
 
-                        if (targetChordNotes.length === 0) {
+                        if (baseChordMidiNotes.length === 0) {
                              console.warn(`useDrill: No valid MIDI notes after inversion/conversion for ${selectedChordType} at ${rootWithOctave}`);
                              continue; // Skip this root
                         }
 
-                         // Add the step for this root's chord
-                         chordSteps.push({
-                            expectedMidiNotes: targetChordNotes,
-                            type: 'chord_search_target',
-                            rootNote: root // Store the root note for potential display
-                         });
+                        // --- Octave Loop --- 
+                        // Generate steps for this chord across the specified octave range
+                        for (let octaveIndex = 0; octaveIndex < octaves; octaveIndex++) {
+                             const octaveShift = 12 * octaveIndex; // Semitones to shift up
+                             const octaveChordNotes = baseChordMidiNotes.map(n => n + octaveShift);
+                             
+                             // Add the step for this root's chord in this specific octave
+                             chordSteps.push({
+                                expectedMidiNotes: octaveChordNotes,
+                                type: 'chord_search_target',
+                                rootNote: root, // Store the original root note
+                                octaveIndex: octaveIndex // Store the octave index (0-based)
+                             });
+                        }
+                        // --- End Octave Loop ---
 
                     } catch (error) {
                         console.error(`useDrill: Error getting chord notes for ${selectedChordType} at ${rootWithOctave}:`, error);
@@ -129,34 +139,54 @@ function useDrill({
                     }
                 }
 
-                // Apply repetitions to the entire sequence of roots
+                // Apply repetitions to the entire sequence of roots/octaves
                 generatedSequence = [];
                 for (let i = 0; i < repetitions; i++) {
                     generatedSequence.push(...chordSteps);
                 }
 
             } else if (currentMode === 'diatonic_chords') {
-                // --- Diatonic Chord Drill Generation ---
-                const { repetitions = 1, style = 'ascending' } = drillOptions; // Add style later
-                
-                if (!calculatedDiatonicChordNotes || calculatedDiatonicChordNotes.length !== 7) {
-                    console.warn(`useDrill: Invalid pre-calculated diatonic chord notes received.`);
+                // --- Diatonic Chord Drill Generation (Iterating through Degrees & Octaves) ---
+                const { octaves = 1, repetitions = 1, style = 'ascending' } = drillOptions; // Get octaves/repetitions
+                const chordSteps = []; // Holds steps for each degree/octave combo
+
+                if (!calculatedDiatonicChordNotes || calculatedDiatonicChordNotes.length === 0) {
+                    // Allow empty array if calculation failed gracefully, but check length > 0
+                    console.warn(`useDrill: Invalid or empty pre-calculated diatonic chord notes received.`);
                     setDrillSequence([]); return;
                 }
 
-                let baseSequence = calculatedDiatonicChordNotes.map(notes => ({
-                    expectedMidiNotes: notes, // Already calculated MIDI notes
-                    type: 'diatonic_chord'
-                })); 
-                
-                // TODO: Implement different styles (random, specific degrees etc.)
-                // For now, just use ascending order
+                // Iterate through each degree's base chord notes (already calculated in App.jsx)
+                calculatedDiatonicChordNotes.forEach((baseChordMidiNotes, degreeIndex) => {
+                    if (!baseChordMidiNotes || baseChordMidiNotes.length === 0) {
+                        console.warn(`useDrill: Skipping degree ${degreeIndex + 1} due to missing/empty notes.`);
+                        return; // Skip this degree if notes are invalid/empty
+                    }
 
-                let fullSequence = [];
+                    // --- Octave Loop --- 
+                    // Generate steps for this degree's chord across the specified octave range
+                    for (let octaveIndex = 0; octaveIndex < octaves; octaveIndex++) {
+                         const octaveShift = 12 * octaveIndex; // Semitones to shift up
+                         const octaveChordNotes = baseChordMidiNotes.map(n => n + octaveShift);
+                         
+                         // Add the step for this degree's chord in this specific octave
+                         chordSteps.push({
+                            expectedMidiNotes: octaveChordNotes,
+                            type: 'diatonic_chord',
+                            degreeIndex: degreeIndex, // Store the degree index (0-based)
+                            octaveIndex: octaveIndex // Store the octave index (0-based)
+                         });
+                    }
+                    // --- End Octave Loop ---
+                });
+
+                // TODO: Implement different styles (random, specific degrees etc.) for the base sequence before repetitions/octaves?
+
+                // Apply repetitions to the entire sequence of degrees/octaves
+                generatedSequence = [];
                 for (let i = 0; i < repetitions; i++) {
-                   fullSequence.push(...baseSequence);
+                   generatedSequence.push(...chordSteps);
                 }
-                generatedSequence = fullSequence;
                 
             } else {
                 console.warn(`useDrill: Unknown drill mode: ${currentMode}`);

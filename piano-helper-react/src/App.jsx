@@ -48,6 +48,10 @@ function App() {
 
   // --- Drill State ---
   const [isDrillActive, setIsDrillActive] = useState(false);
+  // User configurable drill options (set before starting)
+  const [drillNumOctaves, setDrillNumOctaves] = useState(1); // New state for octave range
+  const [drillRepetitions, setDrillRepetitions] = useState(1); // New state for repetitions
+  // Options passed to the active drill instance
   const [drillOptions, setDrillOptions] = useState({}); // User selections for the current drill
   const [currentDrillStep, setCurrentDrillStep] = useState({ expectedMidiNotes: [], type: null, stepIndex: 0, totalSteps: 0 });
   const [drillScore, setDrillScore] = useState({ correctNotes: 0, incorrectNotes: 0 });
@@ -430,8 +434,35 @@ function App() {
     }
   };
 
+  // New handlers for drill options
+  const handleDrillOctavesChange = (event) => {
+    const value = parseInt(event.target.value, 10);
+    if (value >= 1 && value <= 4) { // Limit octaves, e.g., 1-4
+        setDrillNumOctaves(value);
+    }
+  };
+
+  const handleDrillRepetitionsChange = (event) => {
+     const value = parseInt(event.target.value, 10);
+     if (value >= 1 && value <= 10) { // Limit repetitions, e.g., 1-10
+        setDrillRepetitions(value);
+     }
+  };
+
   const handleDrillToggle = () => {
-    setIsDrillActive(!isDrillActive);
+    const startingDrill = !isDrillActive;
+    if (startingDrill) {
+        // Set the options for the drill instance when starting
+        setDrillOptions({
+            octaves: drillNumOctaves, // Pass the range setting
+            repetitions: drillRepetitions,
+            // Potentially add 'style' here later if needed for chord drills
+        });
+    } else {
+        // Reset options or leave them? Let's clear for now.
+        setDrillOptions({});
+    }
+    setIsDrillActive(startingDrill);
   };
 
   console.log('App.jsx - ROOT_NOTES:', ROOT_NOTES);
@@ -499,10 +530,15 @@ function App() {
         // --- Drill Props ---
         isDrillActive={isDrillActive}
         setIsDrillActive={handleDrillToggle}
-        drillOptions={drillOptions}
-        setDrillOptions={setDrillOptions}
+        drillOptions={drillOptions} // Pass the active options
+        setDrillOptions={setDrillOptions} // Should this be removed? Options set on toggle.
         currentDrillStep={drillStepData}
         drillScore={currentDrillScore}
+        // New props for configuration
+        drillNumOctaves={drillNumOctaves}
+        drillRepetitions={drillRepetitions}
+        onDrillOctavesChange={handleDrillOctavesChange}
+        onDrillRepetitionsChange={handleDrillRepetitionsChange}
       />
       <PianoKeyboard
         rootNote={rootNoteMidi}
