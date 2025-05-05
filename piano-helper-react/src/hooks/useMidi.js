@@ -9,22 +9,20 @@ const musicLogic = new MusicLogic();
 
 /**
  * Custom Hook to manage WebMIDI API interactions.
+ * Accepts callbacks for noteon and noteoff events.
  */
-function useMidi() {
+function useMidi({ onNoteOn, onNoteOff }) { // <-- Accept callbacks as props
   const [isInitialized, setIsInitialized] = useState(false);
   const [inputs, setInputs] = useState([]); // Array of { id, name } for inputs
   const [outputs, setOutputs] = useState([]); // Array of { id, name } for outputs
   const [selectedInputId, setSelectedInputId] = useState(null);
   const [selectedOutputId, setSelectedOutputId] = useState(null);
   const [logMessages, setLogMessages] = useState(['MIDI Hook Initialized...']); // State for logs
-  const [lastMidiMessage, setLastMidiMessage] = useState(null); // <-- New state for last message
-  const [latestNoteOn, setLatestNoteOn] = useState(null); // <-- Keep for drill trigger
-  const [activeNotes, setActiveNotes] = useState(new Set()); // <-- Add state for currently held notes
-  
-  // Memoize the array version of activeNotes
-  const activeNotesArray = useMemo(() => {
-      return Array.from(activeNotes);
-  }, [activeNotes]); // Only recompute when the activeNotes Set changes
+  const [lastMidiMessage, setLastMidiMessage] = useState(null); // <-- Keep for potential future use
+  // REMOVED internal state for latestMidiEvent and activeNotes
+  // const [latestMidiEvent, setLatestMidiEvent] = useState(null);
+  // const [activeNotes, setActiveNotes] = useState(new Set()); 
+  // REMOVED activeNotesArray = useMemo(...)
 
   // Ref to store the currently selected WebMidi Input object
   const selectedInputRef = useRef(null); 
@@ -182,21 +180,21 @@ function useMidi() {
         if (command === 9 && data2 > 0) {
             const noteName = musicLogic.midiToNoteName(data1);
             messageString = `Note On  (Ch ${channel}): ${noteName} Vel: ${data2}`;
-            // Update latestNoteOn state (for drill trigger)
-            setLatestNoteOn({ note: data1, velocity: data2, timestamp: Date.now() });
-            // Add note to activeNotes Set
-            setActiveNotes(prev => new Set(prev).add(data1)); 
-        } else if (command === 8 || (command === 9 && data2 === 0)) {
+            // REMOVED setLatestMidiEvent
+            // REMOVED setActiveNotes
+            // Call the onNoteOn callback prop instead
+            if (typeof onNoteOn === 'function') {
+                onNoteOn({ note: data1, velocity: data2, type: 'noteon', timestamp: Date.now() });
+            }
+        } else if (command === 8 || (command === 9 && data2 === 0)) { // Note Off
             const noteName = musicLogic.midiToNoteName(data1);
             messageString = `Note Off (Ch ${channel}): ${noteName} Vel: ${data2}`;
-            // Remove note from activeNotes Set
-            setActiveNotes(prev => {
-                const next = new Set(prev);
-                const deleted = next.delete(data1);
-                // Log the result of the deletion and the next state
-                // console.log(`useMidi: Attempted to remove note ${data1}. Deleted: ${deleted}. Next activeNotes size: ${next.size}`); 
-                return next;
-            });
+            // REMOVED setLatestMidiEvent
+            // REMOVED setActiveNotes
+            // Call the onNoteOff callback prop instead
+             if (typeof onNoteOff === 'function') {
+                onNoteOff({ note: data1, velocity: data2, type: 'noteoff', timestamp: Date.now() });
+             }
         } else if (command === 11) {
             messageString = `CC       (Ch ${channel}): Ctrl ${data1} Val: ${data2}`;
         } else if (command === 14) {
@@ -235,7 +233,7 @@ function useMidi() {
     // if (event.type === 'noteon' || event.type === 'noteoff') {
     //     console.log(`MIDI ${event.type}: Note=${event.note.identifier}, Vel=${event.velocity}, Chan=${event.channel}`);
     // }
-  }, [log]); // Dependency is only log now
+  }, [log, onNoteOn, onNoteOff]); // Add callbacks to dependency array
 
   // --- Device Selection --- 
   const selectInput = useCallback((id) => {
@@ -330,8 +328,8 @@ function useMidi() {
     selectOutput,
     sendMessage,
     lastMidiMessage, // <-- Expose last message
-    latestNoteOn, // <-- Expose latest Note On event (for drill trigger)
-    activeNotes: activeNotesArray // <-- Return the memoized array
+    // REMOVED latestMidiEvent
+    // REMOVED activeNotes
   };
 }
 

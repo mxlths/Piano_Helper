@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Note, Scale, Chord } from '@tonaljs/tonal'; // Import for getting degree names and scale intervals
+import Gm2SoundSelector from './Gm2SoundSelector'; // Import the placeholder component
 
 // Define styles outside the component
 const DRILL_STYLES = [
@@ -14,6 +15,7 @@ const TABS = [
   { id: 'setup', label: 'Setup' },
   { id: 'metronome', label: 'Metronome' },
   { id: 'backingTrack', label: 'Backing Track' },
+  { id: 'gm2Sounds', label: 'GM2 Sounds' }, // NEW: Add the GM2 Sounds tab
 ];
 
 function Controls({ 
@@ -433,8 +435,17 @@ function Controls({
            </div>
         )}
 
-        {/* === Drills Tab === */} 
-        {/* Drills tab content removed */}
+        {/* NEW: === GM2 Sounds Tab === */}
+        {activeTab === 'gm2Sounds' && (
+          <div>
+            <h4>GM2 Sound Selection</h4>
+            <Gm2SoundSelector 
+                // Pass necessary props later, e.g., MIDI output, sending function
+            />
+            {/* Placeholder for GM2 controls */}
+            <p>GM2 Sound selection controls will go here.</p> 
+          </div>
+        )}
       </div>
 
     </div> // End of main Controls div
