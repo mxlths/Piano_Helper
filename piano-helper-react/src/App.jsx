@@ -508,111 +508,6 @@ function App() {
     <div className="App">
       <h1>Piano Helper (React Version)</h1>
 
-      <Controls
-        // Mode
-        modes={MODES}
-        currentMode={currentMode}
-        onModeChange={handleModeChange}
-
-        // Root/Scale/Chord Search Props
-        rootNotes={ROOT_NOTES}
-        octaves={OCTAVES}
-        scaleTypes={SCALE_TYPES}
-        chordTypes={CHORD_TYPES} // For chord_search mode
-        selectedRootNote={selectedRootNote}
-        selectedOctave={selectedOctave}
-        selectedScaleType={selectedScaleType}
-        selectedChordType={selectedChordType} // For chord_search mode
-        onRootChange={handleRootChange}
-        onOctaveChange={handleOctaveChange}
-        onScaleChange={handleScaleChange}
-        onChordChange={handleChordChange} // For chord_search mode
-
-        // Diatonic Chord Mode Props - CORRECTED
-        diatonicTriads={diatonicTriads} // Pass the calculated triads
-        diatonicSevenths={diatonicSevenths} // Pass the calculated sevenths
-        selectedDiatonicDegree={selectedDiatonicDegree}
-        showSevenths={showSevenths}
-        splitHandVoicing={splitHandVoicing}
-        rhInversion={rhInversion}
-        inversions={INVERSIONS} 
-        onDiatonicDegreeChange={handleDiatonicDegreeChange}
-        onShowSeventhsChange={handleShowSeventhsChange}
-        onSplitHandVoicingChange={handleSplitHandVoicingChange}
-        onRhInversionChange={handleRhInversionChange}
-        splitHandInterval={splitHandInterval}
-        onSplitHandIntervalChange={handleSplitHandIntervalChange}
-
-        // MIDI Props
-        midiInputs={midiInputs}
-        midiOutputs={midiOutputs}
-        selectedInputId={selectedInputId}
-        selectedOutputId={selectedOutputId}
-        onSelectInput={selectMidiInput}
-        onSelectOutput={selectMidiOutput}
-        isMidiInitialized={isMidiInitialized}
-
-        // Metronome Props
-        isMetronomePlaying={isMetronomePlaying}
-        metronomeBpm={metronomeBpm}
-        metronomeSoundNote={metronomeSoundNote}
-        metronomeSounds={metronomeSounds}
-        metronomeTimeSignature={metronomeTimeSignature}
-        onToggleMetronome={toggleMetronomePlay}
-        onChangeMetronomeTempo={changeMetronomeTempo}
-        onChangeMetronomeSound={changeMetronomeSound}
-        onChangeMetronomeTimeSignature={changeMetronomeTimeSignature}
-
-        // --- Drill Props ---
-        isDrillActive={isDrillActive}
-        setIsDrillActive={handleDrillToggle}
-        drillOptions={drillOptions} // Pass the active options
-        setDrillOptions={setDrillOptions} // Should this be removed? Options set on toggle.
-        currentDrillStep={drillStepData}
-        drillScore={currentDrillScore}
-        // New props for configuration
-        drillNumOctaves={drillNumOctaves}
-        drillRepetitions={drillRepetitions}
-        onDrillOctavesChange={handleDrillOctavesChange}
-        onDrillRepetitionsChange={handleDrillRepetitionsChange}
-        // Pass style state and handler
-        drillStyle={drillStyle}
-        onDrillStyleChange={handleDrillStyleChange}
-
-        // --- MIDI Player Props ---
-        playbackState={playbackState}
-        loadedMidiFileName={loadedFileName} // Pass the name of the loaded file
-        availableMidiFiles={[
-            // Dynamically generated from public/midi-files (needs update if files change)
-            { name: "9-8 NmlStr Tambourine 141", url: "/Piano_Helper/midi-files/JBB_9-8_NmlStr_Tambourine_141.mid" },
-            { name: "4-4 NmlStr Triangles 130", url: "/Piano_Helper/midi-files/JBB_4-4_NmlStr_Triangles_130.mid" },
-            { name: "4-4 NmlStr Toms 129", url: "/Piano_Helper/midi-files/JBB_4-4_NmlStr_Toms_129.mid" },
-            { name: "3-4 NmlStr Shaker 128", url: "/Piano_Helper/midi-files/JBB_3-4_NmlStr_Shaker_128.mid" },
-            { name: "3-4 NmlStr Kicks 127", url: "/Piano_Helper/midi-files/JBB_3-4_NmlStr_Kicks_127.mid" },
-            { name: "3-4 NmlStr HiHats 126", url: "/Piano_Helper/midi-files/JBB_3-4_NmlStr_HiHats_126.mid" },
-            { name: "3-4 NmlStr Cowbell 125", url: "/Piano_Helper/midi-files/JBB_3-4_NmlStr_Cowbell_125.mid" },
-            { name: "3-4 NmlMedSwg Snares 124", url: "/Piano_Helper/midi-files/JBB_3-4_NmlMedSwg_Snares_124.mid" },
-            { name: "3-4 NmlMedSwg Rides 123", url: "/Piano_Helper/midi-files/JBB_3-4_NmlMedSwg_Rides_123.mid" },
-            { name: "2-4 NmlStr Cabasa 122", url: "/Piano_Helper/midi-files/JBB_2-4_NmlStr_Cabasa_122.mid" },
-            { name: "12-8 NmlStr Congas 145", url: "/Piano_Helper/midi-files/JBB_12-8_NmlStr_Congas_145.mid" },
-            { name: "12-8 NmlStr Bongos 144", url: "/Piano_Helper/midi-files/JBB_12-8_NmlStr_Bongos_144.mid" },
-            { name: "9-8 NmlStr T024 FullKit 117", url: "/Piano_Helper/midi-files/JBB_9-8_NmlStr_T024_FullKit_117.mid" },
-            { name: "12-8 NmlStr T096 FullKit 120", url: "/Piano_Helper/midi-files/JBB_12-8_NmlStr_T096_FullKit_120.mid" },
-            { name: "6-8 NmlStr T057 FullKit 115", url: "/Piano_Helper/midi-files/JBB_6-8_NmlStr_T057_FullKit_115.mid" },
-            { name: "4-4 NmlStr T088 FullKit 109", url: "/Piano_Helper/midi-files/JBB_4-4_NmlStr_T088_FullKit_109.mid" },
-            { name: "4-4 NmlStr T009 FullKit 110", url: "/Piano_Helper/midi-files/JBB_4-4_NmlStr_T009_FullKit_110.mid" },
-            { name: "4-4 NmlMedSwg T076 FullKit 108", url: "/Piano_Helper/midi-files/JBB_4-4_NmlMedSwg_T076_FullKit_108.mid" },
-            { name: "4-4 NmlMedSwg T069 FullKit 106", url: "/Piano_Helper/midi-files/JBB_4-4_NmlMedSwg_T069_FullKit_106.mid" },
-            { name: "4-4 NmlMedSwg T008 FullKit 107", url: "/Piano_Helper/midi-files/JBB_4-4_NmlMedSwg_T008_FullKit_107.mid" },
-            { name: "4-4 DblTmMedSwg T017 FullKit 103", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T017_FullKit_103.mid" },
-            { name: "4-4 DblTmMedSwg T014 FullKit 104", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T014_FullKit_104.mid" },
-            { name: "4-4 DblTmMedSwg T007 FullKit 102", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T007_FullKit_102.mid" },
-        ]}
-        onLoadMidiFile={loadMidiFile}
-        onPlayMidiFile={playMidiFile}
-        onPauseMidiFile={pauseMidiFile}
-        onStopMidiFile={stopMidiFile}
-      />
       <PianoKeyboard
         rootNote={rootNoteMidi}
         notesToHighlight={notesToHighlight}
@@ -621,16 +516,126 @@ function App() {
         expectedNotes={isDrillActive ? drillStepData.expectedMidiNotes : []} // <-- Pass expected notes
         lowestNote={48} // Example: C3
       />
-      <InfoDisplay
-        selectedRoot={selectedRootWithOctave}
-        selectedScaleType={selectedScaleType}
-        selectedChordType={selectedChordType}
-        currentMode={currentMode}
-        diatonicTriads={diatonicTriads}
-        diatonicSevenths={diatonicSevenths}
-        selectedDiatonicDegree={selectedDiatonicDegree}
-        showSevenths={showSevenths}
-      />
+      {/* Flex container for Info and Controls */}
+      <div style={{ display: 'flex', gap: '20px', marginTop: '10px', alignItems: 'flex-start' }}>
+        <InfoDisplay
+          style={{ flex: 1 }} // Assign flex properties (adjust as needed)
+          selectedRoot={selectedRootWithOctave}
+          selectedScaleType={selectedScaleType}
+          selectedChordType={selectedChordType}
+          currentMode={currentMode}
+          diatonicTriads={diatonicTriads}
+          diatonicSevenths={diatonicSevenths}
+          selectedDiatonicDegree={selectedDiatonicDegree}
+          showSevenths={showSevenths}
+        />
+        <Controls
+          style={{ flex: 2 }} // Assign flex properties (adjust as needed)
+          // Mode
+          modes={MODES}
+          currentMode={currentMode}
+          onModeChange={handleModeChange}
+
+          // Root/Scale/Chord Search Props
+          rootNotes={ROOT_NOTES}
+          octaves={OCTAVES}
+          scaleTypes={SCALE_TYPES}
+          chordTypes={CHORD_TYPES} // For chord_search mode
+          selectedRootNote={selectedRootNote}
+          selectedOctave={selectedOctave}
+          selectedScaleType={selectedScaleType}
+          selectedChordType={selectedChordType} // For chord_search mode
+          onRootChange={handleRootChange}
+          onOctaveChange={handleOctaveChange}
+          onScaleChange={handleScaleChange}
+          onChordChange={handleChordChange} // For chord_search mode
+
+          // Diatonic Chord Mode Props - CORRECTED
+          diatonicTriads={diatonicTriads} // Pass the calculated triads
+          diatonicSevenths={diatonicSevenths} // Pass the calculated sevenths
+          selectedDiatonicDegree={selectedDiatonicDegree}
+          showSevenths={showSevenths}
+          splitHandVoicing={splitHandVoicing}
+          rhInversion={rhInversion}
+          inversions={INVERSIONS} 
+          onDiatonicDegreeChange={handleDiatonicDegreeChange}
+          onShowSeventhsChange={handleShowSeventhsChange}
+          onSplitHandVoicingChange={handleSplitHandVoicingChange}
+          onRhInversionChange={handleRhInversionChange}
+          splitHandInterval={splitHandInterval}
+          onSplitHandIntervalChange={handleSplitHandIntervalChange}
+
+          // MIDI Props
+          midiInputs={midiInputs}
+          midiOutputs={midiOutputs}
+          selectedInputId={selectedInputId}
+          selectedOutputId={selectedOutputId}
+          onSelectInput={selectMidiInput}
+          onSelectOutput={selectMidiOutput}
+          isMidiInitialized={isMidiInitialized}
+
+          // Metronome Props
+          isMetronomePlaying={isMetronomePlaying}
+          metronomeBpm={metronomeBpm}
+          metronomeSoundNote={metronomeSoundNote}
+          metronomeSounds={metronomeSounds}
+          metronomeTimeSignature={metronomeTimeSignature}
+          onToggleMetronome={toggleMetronomePlay}
+          onChangeMetronomeTempo={changeMetronomeTempo}
+          onChangeMetronomeSound={changeMetronomeSound}
+          onChangeMetronomeTimeSignature={changeMetronomeTimeSignature}
+
+          // --- Drill Props ---
+          isDrillActive={isDrillActive}
+          setIsDrillActive={handleDrillToggle}
+          drillOptions={drillOptions} // Pass the active options
+          setDrillOptions={setDrillOptions} // Should this be removed? Options set on toggle.
+          currentDrillStep={drillStepData}
+          drillScore={currentDrillScore}
+          // New props for configuration
+          drillNumOctaves={drillNumOctaves}
+          drillRepetitions={drillRepetitions}
+          onDrillOctavesChange={handleDrillOctavesChange}
+          onDrillRepetitionsChange={handleDrillRepetitionsChange}
+          // Pass style state and handler
+          drillStyle={drillStyle}
+          onDrillStyleChange={handleDrillStyleChange}
+
+          // --- MIDI Player Props ---
+          playbackState={playbackState}
+          loadedMidiFileName={loadedFileName} // Pass the name of the loaded file
+          availableMidiFiles={[
+              // Dynamically generated from public/midi-files (needs update if files change)
+              { name: "9-8 NmlStr Tambourine 141", url: "/Piano_Helper/midi-files/JBB_9-8_NmlStr_Tambourine_141.mid" },
+              { name: "4-4 NmlStr Triangles 130", url: "/Piano_Helper/midi-files/JBB_4-4_NmlStr_Triangles_130.mid" },
+              { name: "4-4 NmlStr Toms 129", url: "/Piano_Helper/midi-files/JBB_4-4_NmlStr_Toms_129.mid" },
+              { name: "3-4 NmlStr Shaker 128", url: "/Piano_Helper/midi-files/JBB_3-4_NmlStr_Shaker_128.mid" },
+              { name: "3-4 NmlStr Kicks 127", url: "/Piano_Helper/midi-files/JBB_3-4_NmlStr_Kicks_127.mid" },
+              { name: "3-4 NmlStr HiHats 126", url: "/Piano_Helper/midi-files/JBB_3-4_NmlStr_HiHats_126.mid" },
+              { name: "3-4 NmlStr Cowbell 125", url: "/Piano_Helper/midi-files/JBB_3-4_NmlStr_Cowbell_125.mid" },
+              { name: "3-4 NmlMedSwg Snares 124", url: "/Piano_Helper/midi-files/JBB_3-4_NmlMedSwg_Snares_124.mid" },
+              { name: "3-4 NmlMedSwg Rides 123", url: "/Piano_Helper/midi-files/JBB_3-4_NmlMedSwg_Rides_123.mid" },
+              { name: "2-4 NmlStr Cabasa 122", url: "/Piano_Helper/midi-files/JBB_2-4_NmlStr_Cabasa_122.mid" },
+              { name: "12-8 NmlStr Congas 145", url: "/Piano_Helper/midi-files/JBB_12-8_NmlStr_Congas_145.mid" },
+              { name: "12-8 NmlStr Bongos 144", url: "/Piano_Helper/midi-files/JBB_12-8_NmlStr_Bongos_144.mid" },
+              { name: "9-8 NmlStr T024 FullKit 117", url: "/Piano_Helper/midi-files/JBB_9-8_NmlStr_T024_FullKit_117.mid" },
+              { name: "12-8 NmlStr T096 FullKit 120", url: "/Piano_Helper/midi-files/JBB_12-8_NmlStr_T096_FullKit_120.mid" },
+              { name: "6-8 NmlStr T057 FullKit 115", url: "/Piano_Helper/midi-files/JBB_6-8_NmlStr_T057_FullKit_115.mid" },
+              { name: "4-4 NmlStr T088 FullKit 109", url: "/Piano_Helper/midi-files/JBB_4-4_NmlStr_T088_FullKit_109.mid" },
+              { name: "4-4 NmlStr T009 FullKit 110", url: "/Piano_Helper/midi-files/JBB_4-4_NmlStr_T009_FullKit_110.mid" },
+              { name: "4-4 NmlMedSwg T076 FullKit 108", url: "/Piano_Helper/midi-files/JBB_4-4_NmlMedSwg_T076_FullKit_108.mid" },
+              { name: "4-4 NmlMedSwg T069 FullKit 106", url: "/Piano_Helper/midi-files/JBB_4-4_NmlMedSwg_T069_FullKit_106.mid" },
+              { name: "4-4 NmlMedSwg T008 FullKit 107", url: "/Piano_Helper/midi-files/JBB_4-4_NmlMedSwg_T008_FullKit_107.mid" },
+              { name: "4-4 DblTmMedSwg T017 FullKit 103", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T017_FullKit_103.mid" },
+              { name: "4-4 DblTmMedSwg T014 FullKit 104", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T014_FullKit_104.mid" },
+              { name: "4-4 DblTmMedSwg T007 FullKit 102", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T007_FullKit_102.mid" },
+          ]}
+          onLoadMidiFile={loadMidiFile}
+          onPlayMidiFile={playMidiFile}
+          onPauseMidiFile={pauseMidiFile}
+          onStopMidiFile={stopMidiFile}
+        />
+      </div>
       <MidiMonitorDisplay
         logMessages={midiLogMessages}
       />
