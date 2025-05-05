@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "midi-player-js": "^2.0.16",
     "tonal": "^6.4.1",
     "webmidi": "^3.1.12"
   }
