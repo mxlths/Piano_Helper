@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Note, Scale, Chord } from '@tonaljs/tonal'; // Import for getting degree names and scale intervals
 import Gm2SoundSelector from './Gm2SoundSelector'; // Import the placeholder component
 
@@ -81,6 +81,10 @@ function Controls({
   onPlayMidiFile,
   onPauseMidiFile,
   onStopMidiFile,
+  // --- NEW MIDI Genre Props ---
+  midiGenres = [], // Add default empty array
+  selectedMidiGenre,
+  onMidiGenreChange,
   style, // Keep style prop passed from App
   
   // Chord Progression Props <-- NEW
@@ -111,6 +115,14 @@ function Controls({
   useEffect(() => {
     // console.log(`[Controls.jsx] Props received - playbackState: ${playbackState}, loadedMidiFileName: ${loadedMidiFileName}`);
   }, [playbackState, loadedMidiFileName]);
+
+  // Filter MIDI files based on selected genre
+  const filteredMidiFiles = useMemo(() => {
+    if (!selectedMidiGenre) {
+      return availableMidiFiles; // Show all if no genre selected (or fallback)
+    }
+    return availableMidiFiles.filter(file => file.genre === selectedMidiGenre);
+  }, [availableMidiFiles, selectedMidiGenre]);
 
   // console.log('Controls.jsx - Received diatonicTriads prop:', diatonicTriads);
   // console.log('Controls.jsx - Received diatonicSevenths prop:', diatonicSevenths);
@@ -577,20 +589,45 @@ function Controls({
         {activeTab === 'backingTrack' && (
            <div style={{ border: 'none', padding: '0' }}> {/* Remove border/padding from original flex item */} 
               <h4>MIDI Backing Track</h4>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <label htmlFor="midi-file-select">Select Track:</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}> {/* Add margin bottom */} 
+                {/* Genre Selector */}
+                <label htmlFor="midi-genre-select">Select Genre:</label>
+                <select 
+                  id="midi-genre-select"
+                  value={selectedMidiGenre || ''}
+                  onChange={(e) => onMidiGenreChange(e.target.value)}
+                >
+                   {/* <option value="">-- All Genres --</option>  Could add this option */}
+                   {midiGenres.map(genre => (
+                     <option key={genre} value={genre}>{genre}</option>
+                   ))}
+                </select>
+
+                {/* Track Selector (Uses filtered files) */}
+                <label htmlFor="midi-file-select" style={{ marginLeft: '15px' }}>Select Track:</label> {/* Add left margin */} 
                 <select 
                   id="midi-file-select"
-                  onChange={(e) => onLoadMidiFile(e.target.value)} // Call load with the selected URL
-                  value={availableMidiFiles.find(f => f.name === loadedMidiFileName)?.url || ""} // Reflect currently loaded file URL
-                  disabled={playbackState === 'playing' || playbackState === 'paused'} // Disable while playing/paused
+                  onChange={(e) => {
+                     const selectedUrl = e.target.value;
+                     if (selectedUrl) {
+                         onLoadMidiFile(selectedUrl); // Call load with the selected URL
+                     } else {
+                         // Handle case where "-- Choose --" is selected (e.g., clear loaded file?)
+                         // Currently, onLoadMidiFile likely handles empty string, but be explicit if needed.
+                     }
+                  }}
+                  value={availableMidiFiles.find(f => f.name === loadedMidiFileName)?.url || ""} // Reflect currently loaded file URL (use availableMidiFiles to find the URL)
+                  disabled={playbackState === 'playing' || playbackState === 'paused' || !selectedMidiGenre} // Also disable if no genre is selected
                 >
                   <option value="">-- Choose a MIDI file --</option>
-                  {availableMidiFiles.map(file => (
+                  {filteredMidiFiles.map(file => (
                     <option key={file.url} value={file.url}>{file.name}</option>
                   ))}
                 </select>
+              </div>
 
+              {/* Playback Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <button 
                   onClick={onPlayMidiFile} 
                   disabled={!loadedMidiFileName || playbackState === 'playing'} // Disable if no file loaded or already playing

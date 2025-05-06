@@ -291,7 +291,7 @@ function useDrill({
                 const { repetitions = 1, style = 'ascending' } = drillOptions;
                 const chordSteps = [];
 
-                console.log(`useDrill: Generating progression drill sequence...`);
+                console.log(`useDrill: Generating progression drill sequence... Using ${repetitions} repetitions.`); // Log repetitions
 
                 // Create initial steps from the transposed chords
                 transposedProgressionChords.forEach((chordInfo, index) => {
@@ -323,6 +323,8 @@ function useDrill({
                     generatedSequence.push(...orderedChordSteps);
                 }
                 // --- End Repetitions ---
+
+                console.log(`useDrill: Progression sequence generated. Total steps including repetitions: ${generatedSequence.length}`); // Log final length
 
             } else {
                 console.warn(`useDrill: Unknown drill mode: ${currentMode}`);
@@ -408,36 +410,51 @@ function useDrill({
             // --- Chord Logic (Applies to both Diatonic and Chord Search steps) --- 
             const expectedNotesSet = new Set(expectedNotes);
 
-            console.log(`useDrill ChordLogic: Checking note ${midiNoteNumber} against expected set:`, expectedNotesSet, `Current played set:`, notesPlayedCurrentChordStep);
+            console.log(`useDrill ChordLogic START: Event Note=${midiNoteNumber}, Timestamp=${playedNoteEvent.timestamp}`);
+            console.log(`useDrill ChordLogic: Current Step Index=${currentStepIndex}`);
+            console.log(`useDrill ChordLogic: Expected MIDI Notes=[${expectedNotes.join(', ')}] (Count: ${expectedNotes.length})`);
+            console.log(`useDrill ChordLogic: Notes Played Set BEFORE processing:`, notesPlayedCurrentChordStep);
             
             if (expectedNotesSet.has(midiNoteNumber)) {
                 // Played a correct note for the current chord
-                const updatedPlayedNotes = new Set(notesPlayedCurrentChordStep).add(midiNoteNumber);
-                setNotesPlayedCurrentChordStep(updatedPlayedNotes);
-                console.log(`useDrill: Correct note for chord played: ${midiNoteNumber}. Need ${expectedNotes.length}, have ${updatedPlayedNotes.size}`);
 
-                // Check if chord is complete
-                if (updatedPlayedNotes.size === expectedNotes.length) {
-                    console.log(`useDrill: Chord complete! Expected: [${expectedNotes.join(', ')}]`);
-                    console.log("useDrill: Incrementing CORRECT score.");
-                    setCurrentScore(prev => ({ ...prev, correctNotes: prev.correctNotes + 1 })); // Score 1 point per completed chord
-                    
-                    const nextStepIndex = currentStepIndex + 1;
-                    if (nextStepIndex < drillSequence.length) {
-                         setCurrentStepIndex(nextStepIndex);
-                         setNotesPlayedCurrentChordStep(new Set()); // Reset for next chord step
-                         console.log(`useDrill: Advancing to chord step ${nextStepIndex}`);
+                // --- Check if note ALREADY played in this step --- 
+                if (notesPlayedCurrentChordStep.has(midiNoteNumber)) {
+                    console.log(`useDrill ChordLogic: Note ${midiNoteNumber} was ALREADY played in this step. Ignoring.`);
+                    // Optionally increment incorrect score? Or just ignore duplicate presses?
+                    // setCurrentScore(prev => ({ ...prev, incorrectNotes: prev.incorrectNotes + 1 }));
+                } else {
+                    console.log(`useDrill ChordLogic: Correct note ${midiNoteNumber} found in expected set.`);
+                    const updatedPlayedNotes = new Set(notesPlayedCurrentChordStep).add(midiNoteNumber);
+                    setNotesPlayedCurrentChordStep(updatedPlayedNotes);
+                    console.log(`useDrill ChordLogic: Notes Played Set AFTER adding ${midiNoteNumber}:`, updatedPlayedNotes);
+                    console.log(`useDrill ChordLogic: Checking completion: Need ${expectedNotes.length}, Have ${updatedPlayedNotes.size}`);
+    
+                    // Check if chord is complete
+                    if (updatedPlayedNotes.size === expectedNotes.length) {
+                        console.log(`useDrill ChordLogic: Chord COMPLETE! Expected: [${expectedNotes.join(', ')}]`);
+                        console.log("useDrill ChordLogic: Incrementing CORRECT score.");
+                        setCurrentScore(prev => ({ ...prev, correctNotes: prev.correctNotes + 1 })); // Score 1 point per completed chord
+                        
+                        const nextStepIndex = currentStepIndex + 1;
+                        console.log(`useDrill ChordLogic: Advancing. Next index will be ${nextStepIndex}. Total steps: ${drillSequence.length}`);
+                        if (nextStepIndex < drillSequence.length) {
+                             setCurrentStepIndex(nextStepIndex);
+                             setNotesPlayedCurrentChordStep(new Set()); // Reset for next chord step
+                             console.log(`useDrill ChordLogic: Advanced to chord step ${nextStepIndex}. Reset played notes set.`);
+                        } else {
+                             console.log("useDrill ChordLogic: Drill sequence finished!");
+                             setCurrentStepIndex(nextStepIndex); 
+                        }
                     } else {
-                         console.log("useDrill: Drill sequence completed!");
-                         setCurrentStepIndex(nextStepIndex); 
+                       console.log(`useDrill ChordLogic: Chord NOT YET complete. Waiting for more notes.`); 
                     }
                 }
-                // else: Chord not yet complete, wait for more notes
 
             } else {
                 // Played an incorrect note (not part of the current chord)
-                 console.log(`useDrill ChordLogic: Incorrect note ${midiNoteNumber}. Expected one of: [${expectedNotes.join(', ')}]. Current played set:`, notesPlayedCurrentChordStep);
-                 console.log("useDrill: Incrementing INCORRECT score.");
+                 console.log(`useDrill ChordLogic: Incorrect note ${midiNoteNumber} played. Expected one of: [${expectedNotes.join(', ')}].`);
+                 console.log("useDrill ChordLogic: Incrementing INCORRECT score.");
                  setCurrentScore(prev => ({ ...prev, incorrectNotes: prev.incorrectNotes + 1 }));
                  // Do not advance step on incorrect note
             }

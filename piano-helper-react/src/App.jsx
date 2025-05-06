@@ -34,6 +34,137 @@ const INVERSIONS = [
   { value: 3, label: '3rd Inv' }, // Only applicable for 7ths
 ];
 
+// Define available genres based on the folder structure
+const MIDI_GENRES = ['Jazz', 'Latin', 'Funk', 'BluesRock', 'Reggae']; // Add more as needed
+
+// --- UPDATED: Define MIDI files with genres ---
+// Note: Update these paths if your public folder setup changes or if vite base changes
+const ALL_MIDI_FILES = [
+    // Jazz
+    { genre: 'Jazz', name: "JBB 9-8 NmlStr Tambourine 141", url: "/midi-files/Jazz/JBB_9-8_NmlStr_Tambourine_141.mid" },
+    { genre: 'Jazz', name: "JBB 4-4 NmlStr Triangles 130", url: "/midi-files/Jazz/JBB_4-4_NmlStr_Triangles_130.mid" },
+    { genre: 'Jazz', name: "JBB 4-4 NmlStr Toms 129", url: "/midi-files/Jazz/JBB_4-4_NmlStr_Toms_129.mid" },
+    { genre: 'Jazz', name: "JBB 3-4 NmlStr Shaker 128", url: "/midi-files/Jazz/JBB_3-4_NmlStr_Shaker_128.mid" },
+    { genre: 'Jazz', name: "JBB 3-4 NmlStr Kicks 127", url: "/midi-files/Jazz/JBB_3-4_NmlStr_Kicks_127.mid" },
+    { genre: 'Jazz', name: "JBB 3-4 NmlStr HiHats 126", url: "/midi-files/Jazz/JBB_3-4_NmlStr_HiHats_126.mid" },
+    { genre: 'Jazz', name: "JBB 3-4 NmlStr Cowbell 125", url: "/midi-files/Jazz/JBB_3-4_NmlStr_Cowbell_125.mid" },
+    { genre: 'Jazz', name: "JBB 3-4 NmlMedSwg Snares 124", url: "/midi-files/Jazz/JBB_3-4_NmlMedSwg_Snares_124.mid" },
+    { genre: 'Jazz', name: "JBB 3-4 NmlMedSwg Rides 123", url: "/midi-files/Jazz/JBB_3-4_NmlMedSwg_Rides_123.mid" },
+    { genre: 'Jazz', name: "JBB 2-4 NmlStr Cabasa 122", url: "/midi-files/Jazz/JBB_2-4_NmlStr_Cabasa_122.mid" },
+    { genre: 'Jazz', name: "JBB 12-8 NmlStr Congas 145", url: "/midi-files/Jazz/JBB_12-8_NmlStr_Congas_145.mid" },
+    { genre: 'Jazz', name: "JBB 12-8 NmlStr Bongos 144", url: "/midi-files/Jazz/JBB_12-8_NmlStr_Bongos_144.mid" },
+    { genre: 'Jazz', name: "JBB 9-8 NmlStr T024 FullKit 117", url: "/midi-files/Jazz/JBB_9-8_NmlStr_T024_FullKit_117.mid" },
+    { genre: 'Jazz', name: "JBB 12-8 NmlStr T096 FullKit 120", url: "/midi-files/Jazz/JBB_12-8_NmlStr_T096_FullKit_120.mid" },
+    { genre: 'Jazz', name: "JBB 6-8 NmlStr T057 FullKit 115", url: "/midi-files/Jazz/JBB_6-8_NmlStr_T057_FullKit_115.mid" },
+    { genre: 'Jazz', name: "JBB 4-4 NmlStr T088 FullKit 109", url: "/midi-files/Jazz/JBB_4-4_NmlStr_T088_FullKit_109.mid" },
+    { genre: 'Jazz', name: "JBB 4-4 NmlStr T009 FullKit 110", url: "/midi-files/Jazz/JBB_4-4_NmlStr_T009_FullKit_110.mid" },
+    { genre: 'Jazz', name: "JBB 4-4 NmlMedSwg T076 FullKit 108", url: "/midi-files/Jazz/JBB_4-4_NmlMedSwg_T076_FullKit_108.mid" },
+    { genre: 'Jazz', name: "JBB 4-4 NmlMedSwg T069 FullKit 106", url: "/midi-files/Jazz/JBB_4-4_NmlMedSwg_T069_FullKit_106.mid" },
+    { genre: 'Jazz', name: "JBB 4-4 NmlMedSwg T008 FullKit 107", url: "/midi-files/Jazz/JBB_4-4_NmlMedSwg_T008_FullKit_107.mid" },
+    { genre: 'Jazz', name: "JBB 4-4 DblTmMedSwg T017 FullKit 103", url: "/midi-files/Jazz/JBB_4-4_DblTmMedSwg_T017_FullKit_103.mid" },
+    { genre: 'Jazz', name: "JBB 4-4 DblTmMedSwg T014 FullKit 104", url: "/midi-files/Jazz/JBB_4-4_DblTmMedSwg_T014_FullKit_104.mid" },
+    { genre: 'Jazz', name: "JBB 4-4 DblTmMedSwg T007 FullKit 102", url: "/midi-files/Jazz/JBB_4-4_DblTmMedSwg_T007_FullKit_102.mid" },
+    // Latin
+    { genre: 'Latin', name: "LS 9-8 NmlStr Triangles 169", url: "/midi-files/Latin/LS_9-8_NmlStr_Triangles_169.mid" },
+    { genre: 'Latin', name: "LS 9-8 NmlStr Maracas 168", url: "/midi-files/Latin/LS_9-8_NmlStr_Maracas_168.mid" },
+    { genre: 'Latin', name: "LS 9-8 NmlStr Cowbell 167", url: "/midi-files/Latin/LS_9-8_NmlStr_Cowbell_167.mid" },
+    { genre: 'Latin', name: "LS 9-8 NmlStr Cabasa 166", url: "/midi-files/Latin/LS_9-8_NmlStr_Cabasa_166.mid" },
+    { genre: 'Latin', name: "LS 6-8 NmlStr WoodBlocks 160", url: "/midi-files/Latin/LS_6-8_NmlStr_WoodBlocks_160.mid" },
+    { genre: 'Latin', name: "LS 6-8 NmlStr Toms 159", url: "/midi-files/Latin/LS_6-8_NmlStr_Toms_159.mid" },
+    { genre: 'Latin', name: "LS 6-8 NmlStr Rides 158", url: "/midi-files/Latin/LS_6-8_NmlStr_Rides_158.mid" },
+    { genre: 'Latin', name: "LS 6-8 NmlStr Congas 157", url: "/midi-files/Latin/LS_6-8_NmlStr_Congas_157.mid" },
+    { genre: 'Latin', name: "LS 4-4 NmlStr Tambourine 152", url: "/midi-files/Latin/LS_4-4_NmlStr_Tambourine_152.mid" },
+    { genre: 'Latin', name: "LS 4-4 NmlStr Claves 151", url: "/midi-files/Latin/LS_4-4_NmlStr_Claves_151.mid" },
+    { genre: 'Latin', name: "LS 4-4 NmlStr Bongos 150", url: "/midi-files/Latin/LS_4-4_NmlStr_Bongos_150.mid" },
+    { genre: 'Latin', name: "LS 4-4 NmlStr Agogo 149", url: "/midi-files/Latin/LS_4-4_NmlStr_Agogo_149.mid" },
+    { genre: 'Latin', name: "LS 4-4 NmlMedSwg Snares 148", url: "/midi-files/Latin/LS_4-4_NmlMedSwg_Snares_148.mid" },
+    { genre: 'Latin', name: "LS 3-4 NmlStr Guiro 147", url: "/midi-files/Latin/LS_3-4_NmlStr_Guiro_147.mid" },
+    { genre: 'Latin', name: "LS 2-4 NmlStr Kicks 146", url: "/midi-files/Latin/LS_2-4_NmlStr_Kicks_146.mid" },
+    { genre: 'Latin', name: "LS 12-8 NmlStr Timbale 181", url: "/midi-files/Latin/LS_12-8_NmlStr_Timbale_181.mid" },
+    { genre: 'Latin', name: "LS 12-8 NmlStr Shaker 180", url: "/midi-files/Latin/LS_12-8_NmlStr_Shaker_180.mid" },
+    { genre: 'Latin', name: "LS 12-8 NmlStr HiHats 179", url: "/midi-files/Latin/LS_12-8_NmlStr_HiHats_179.mid" },
+    { genre: 'Latin', name: "LS 9-8 NmlStr T061 FullKit 138", url: "/midi-files/Latin/LS_9-8_NmlStr_T061_FullKit_138.mid" },
+    { genre: 'Latin', name: "LS 12-8 NmlStr T127 FullKit 141", url: "/midi-files/Latin/LS_12-8_NmlStr_T127_FullKit_141.mid" },
+    { genre: 'Latin', name: "LS 12-8 NmlStr T085 FullKit 142", url: "/midi-files/Latin/LS_12-8_NmlStr_T085_FullKit_142.mid" },
+    { genre: 'Latin', name: "LS 6-8 NmlStr T101 FullKit 135", url: "/midi-files/Latin/LS_6-8_NmlStr_T101_FullKit_135.mid" },
+    { genre: 'Latin', name: "LS 6-8 NmlStr T057 FullKit 134", url: "/midi-files/Latin/LS_6-8_NmlStr_T057_FullKit_134.mid" },
+    { genre: 'Latin', name: "LS 4-4 NmlStr T169 FullKit 129", url: "/midi-files/Latin/LS_4-4_NmlStr_T169_FullKit_129.mid" },
+    { genre: 'Latin', name: "LS 4-4 NmlStr T151 FullKit 126", url: "/midi-files/Latin/LS_4-4_NmlStr_T151_FullKit_126.mid" },
+    { genre: 'Latin', name: "LS 4-4 NmlStr T102 FullKit 127", url: "/midi-files/Latin/LS_4-4_NmlStr_T102_FullKit_127.mid" },
+    { genre: 'Latin', name: "LS 4-4 NmlStr T073 FullKit 128", url: "/midi-files/Latin/LS_4-4_NmlStr_T073_FullKit_128.mid" },
+    { genre: 'Latin', name: "LS 4-4 NmlStr T019 FullKit 130", url: "/midi-files/Latin/LS_4-4_NmlStr_T019_FullKit_130.mid" },
+    { genre: 'Latin', name: "LS 4-4 NmlMedSwg T001 FullKit 125", url: "/midi-files/Latin/LS_4-4_NmlMedSwg_T001_FullKit_125.mid" },
+    { genre: 'Latin', name: "LS 4-4 NmlHrdSwg T004 FullKit 124", url: "/midi-files/Latin/LS_4-4_NmlHrdSwg_T004_FullKit_124.mid" },
+    { genre: 'Latin', name: "LS 3-4 NmlStr T066 FullKit 122", url: "/midi-files/Latin/LS_3-4_NmlStr_T066_FullKit_122.mid" },
+    { genre: 'Latin', name: "LS 3-4 NmlStr T000 FullKit 123", url: "/midi-files/Latin/LS_3-4_NmlStr_T000_FullKit_123.mid" },
+    { genre: 'Latin', name: "LS 2-4 NmlStr T128 FullKit 121", url: "/midi-files/Latin/LS_2-4_NmlStr_T128_FullKit_121.mid" },
+    // Funk
+    { genre: 'Funk', name: "FNK 9-8 NmlStr WoodBlocks 072", url: "/midi-files/Funk/FNK_9-8_NmlStr_WoodBlocks_072.mid" },
+    { genre: 'Funk', name: "FNK 9-8 NmlStr Shaker 071", url: "/midi-files/Funk/FNK_9-8_NmlStr_Shaker_071.mid" },
+    { genre: 'Funk', name: "FNK 6-8 NmlStr Triangles 066", url: "/midi-files/Funk/FNK_6-8_NmlStr_Triangles_066.mid" },
+    { genre: 'Funk', name: "FNK 6-8 NmlStr Snares 065", url: "/midi-files/Funk/FNK_6-8_NmlStr_Snares_065.mid" },
+    { genre: 'Funk', name: "FNK 6-8 NmlStr Kicks 064", url: "/midi-files/Funk/FNK_6-8_NmlStr_Kicks_064.mid" },
+    { genre: 'Funk', name: "FNK 6-8 NmlStr HiHats 063", url: "/midi-files/Funk/FNK_6-8_NmlStr_HiHats_063.mid" },
+    { genre: 'Funk', name: "FNK 4-4 NmlStr Tambourine 055", url: "/midi-files/Funk/FNK_4-4_NmlStr_Tambourine_055.mid" },
+    { genre: 'Funk', name: "FNK 4-4 NmlStr Rides 054", url: "/midi-files/Funk/FNK_4-4_NmlStr_Rides_054.mid" },
+    { genre: 'Funk', name: "FNK 4-4 NmlStr Congas 053", url: "/midi-files/Funk/FNK_4-4_NmlStr_Congas_053.mid" },
+    { genre: 'Funk', name: "FNK 4-4 NmlStr Bongos 052", url: "/midi-files/Funk/FNK_4-4_NmlStr_Bongos_052.mid" },
+    { genre: 'Funk', name: "FNK 3-4 DblTmMedSwg Cabasa 051", url: "/midi-files/Funk/FNK_3-4_DblTmMedSwg_Cabasa_051.mid" },
+    { genre: 'Funk', name: "FNK 2-4 NmlStr Cowbell 050", url: "/midi-files/Funk/FNK_2-4_NmlStr_Cowbell_050.mid" },
+    { genre: 'Funk', name: "FNK 12-8 NmlStr Toms 075", url: "/midi-files/Funk/FNK_12-8_NmlStr_Toms_075.mid" },
+    { genre: 'Funk', name: "FNK 9-8 NmlStr T028 FullKit 056", url: "/midi-files/Funk/FNK_9-8_NmlStr_T028_FullKit_056.mid" },
+    { genre: 'Funk', name: "FNK 12-8 NmlStr T029 FullKit 059", url: "/midi-files/Funk/FNK_12-8_NmlStr_T029_FullKit_059.mid" },
+    { genre: 'Funk', name: "FNK 6-8 NmlStr T073 FullKit 053", url: "/midi-files/Funk/FNK_6-8_NmlStr_T073_FullKit_053.mid" },
+    { genre: 'Funk', name: "FNK 6-8 NmlStr T032 FullKit 052", url: "/midi-files/Funk/FNK_6-8_NmlStr_T032_FullKit_052.mid" },
+    { genre: 'Funk', name: "FNK 4-4 NmlStr T083 Synco FullKit 048", url: "/midi-files/Funk/FNK_4-4_NmlStr_T083_Synco_FullKit_048.mid" },
+    { genre: 'Funk', name: "FNK 4-4 NmlStr T083 Synco FullKit 046", url: "/midi-files/Funk/FNK_4-4_NmlStr_T083_Synco_FullKit_046.mid" },
+    { genre: 'Funk', name: "FNK 4-4 NmlStr T059 FullKit 045", url: "/midi-files/Funk/FNK_4-4_NmlStr_T059_FullKit_045.mid" },
+    { genre: 'Funk', name: "FNK 4-4 NmlStr T052 FullKit 047", url: "/midi-files/Funk/FNK_4-4_NmlStr_T052_FullKit_047.mid" },
+    { genre: 'Funk', name: "FNK 4-4 NmlStr T047 FullKit 044", url: "/midi-files/Funk/FNK_4-4_NmlStr_T047_FullKit_044.mid" },
+    { genre: 'Funk', name: "FNK 4-4 NmlMedSwg T005 FullKit 043", url: "/midi-files/Funk/FNK_4-4_NmlMedSwg_T005_FullKit_043.mid" },
+    { genre: 'Funk', name: "FNK 4-4 NmlHrdSwg T005 FullKit 042", url: "/midi-files/Funk/FNK_4-4_NmlHrdSwg_T005_FullKit_042.mid" },
+    { genre: 'Funk', name: "FNK 3-4 NmlStr T030 FullKit 041", url: "/midi-files/Funk/FNK_3-4_NmlStr_T030_FullKit_041.mid" },
+    { genre: 'Funk', name: "FNK 2-4 NmlStr T000 FullKit 040", url: "/midi-files/Funk/FNK_2-4_NmlStr_T000_FullKit_040.mid" },
+    // BluesRock
+    { genre: 'BluesRock', name: "BRnR 9-8 NmlStr Bongos 018", url: "/midi-files/BluesRock/BRnR_9-8_NmlStr_Bongos_018.mid" },
+    { genre: 'BluesRock', name: "BRnR 6-8 NmlStr Cabasa 014", url: "/midi-files/BluesRock/BRnR_6-8_NmlStr_Cabasa_014.mid" },
+    { genre: 'BluesRock', name: "BRnR 4-4 NmlStr Toms 007", url: "/midi-files/BluesRock/BRnR_4-4_NmlStr_Toms_007.mid" },
+    { genre: 'BluesRock', name: "BRnR 4-4 NmlStr HiHats 006", url: "/midi-files/BluesRock/BRnR_4-4_NmlStr_HiHats_006.mid" },
+    { genre: 'BluesRock', name: "BRnR 4-4 NmlStr Cowbell 005", url: "/midi-files/BluesRock/BRnR_4-4_NmlStr_Cowbell_005.mid" },
+    { genre: 'BluesRock', name: "BRnR 4-4 NmlStr Congas 004", url: "/midi-files/BluesRock/BRnR_4-4_NmlStr_Congas_004.mid" },
+    { genre: 'BluesRock', name: "BRnR 4-4 NmlMedSwg Snares 003", url: "/midi-files/BluesRock/BRnR_4-4_NmlMedSwg_Snares_003.mid" },
+    { genre: 'BluesRock', name: "BRnR 4-4 NmlMedSwg Rides 002", url: "/midi-files/BluesRock/BRnR_4-4_NmlMedSwg_Rides_002.mid" },
+    { genre: 'BluesRock', name: "BRnR 4-4 NmlMedSwg Kicks 001", url: "/midi-files/BluesRock/BRnR_4-4_NmlMedSwg_Kicks_001.mid" },
+    { genre: 'BluesRock', name: "BRnR 2-4 NmlStr Tambourine 000", url: "/midi-files/BluesRock/BRnR_2-4_NmlStr_Tambourine_000.mid" },
+    { genre: 'BluesRock', name: "BRnR 12-8 NmlStr Shaker 021", url: "/midi-files/BluesRock/BRnR_12-8_NmlStr_Shaker_021.mid" },
+    { genre: 'BluesRock', name: "BRnR 9-8 NmlStr T036 FullKit 016", url: "/midi-files/BluesRock/BRnR_9-8_NmlStr_T036_FullKit_016.mid" },
+    { genre: 'BluesRock', name: "BRnR 12-8 NmlStr T008 FullKit 019", url: "/midi-files/BluesRock/BRnR_12-8_NmlStr_T008_FullKit_019.mid" },
+    { genre: 'BluesRock', name: "BRnR 6-8 NmlStr T127 FullKit 011", url: "/midi-files/BluesRock/BRnR_6-8_NmlStr_T127_FullKit_011.mid" },
+    { genre: 'BluesRock', name: "BRnR 6-8 NmlStr T046 FullKit 013", url: "/midi-files/BluesRock/BRnR_6-8_NmlStr_T046_FullKit_013.mid" },
+    { genre: 'BluesRock', name: "BRnR 6-8 NmlStr T038 FullKit 012", url: "/midi-files/BluesRock/BRnR_6-8_NmlStr_T038_FullKit_012.mid" },
+    { genre: 'BluesRock', name: "BRnR 6-8 NmlStr T012 FullKit 010", url: "/midi-files/BluesRock/BRnR_6-8_NmlStr_T012_FullKit_010.mid" },
+    { genre: 'BluesRock', name: "BRnR 4-4 NmlStr T160 FullKit 006", url: "/midi-files/BluesRock/BRnR_4-4_NmlStr_T160_FullKit_006.mid" },
+    { genre: 'BluesRock', name: "BRnR 4-4 NmlStr T091 FullKit 005", url: "/midi-files/BluesRock/BRnR_4-4_NmlStr_T091_FullKit_005.mid" },
+    { genre: 'BluesRock', name: "BRnR 4-4 NmlStr T023 FullKit 004", url: "/midi-files/BluesRock/BRnR_4-4_NmlStr_T023_FullKit_004.mid" },
+    { genre: 'BluesRock', name: "BRnR 4-4 NmlHrdSwg T003 FullKit 002", url: "/midi-files/BluesRock/BRnR_4-4_NmlHrdSwg_T003_FullKit_002.mid" },
+    { genre: 'BluesRock', name: "BRnR 3-4 NmlStr T011 FullKit 001", url: "/midi-files/BluesRock/BRnR_3-4_NmlStr_T011_FullKit_001.mid" },
+    { genre: 'BluesRock', name: "BRnR 2-4 NmlStr T076 FullKit 000", url: "/midi-files/BluesRock/BRnR_2-4_NmlStr_T076_FullKit_000.mid" },
+    { genre: 'BluesRock', name: "BRnR 4-4 NmlMedSwg T013 FullKit 003", url: "/midi-files/BluesRock/BRnR_4-4_NmlMedSwg_T013_FullKit_003.mid" },
+    // Reggae
+    { genre: 'Reggae', name: "RS 12-8 NmlStr Tambourine 313", url: "/midi-files/Reggae/RS_12-8_NmlStr_Tambourine_313.mid" },
+    { genre: 'Reggae', name: "RS 12-8 NmlStr Kicks 312", url: "/midi-files/Reggae/RS_12-8_NmlStr_Kicks_312.mid" },
+    { genre: 'Reggae', name: "RS 9-8 NmlStr T000 FullKit 239", url: "/midi-files/Reggae/RS_9-8_NmlStr_T000_FullKit_239.mid" },
+    { genre: 'Reggae', name: "RS 12-8 NmlStr T021 FullKit 243", url: "/midi-files/Reggae/RS_12-8_NmlStr_T021_FullKit_243.mid" },
+    { genre: 'Reggae', name: "RS 12-8 NmlStr T020 FullKit 242", url: "/midi-files/Reggae/RS_12-8_NmlStr_T020_FullKit_242.mid" },
+    { genre: 'Reggae', name: "RS 12-8 NmlStr T010 FullKit 244", url: "/midi-files/Reggae/RS_12-8_NmlStr_T010_FullKit_244.mid" },
+    { genre: 'Reggae', name: "RS 6-8 NmlStr T002 FullKit 236", url: "/midi-files/Reggae/RS_6-8_NmlStr_T002_FullKit_236.mid" },
+    { genre: 'Reggae', name: "RS 4-4 NmlStr T020 FullKit 232", url: "/midi-files/Reggae/RS_4-4_NmlStr_T020_FullKit_232.mid" },
+    { genre: 'Reggae', name: "RS 4-4 NmlStr T017 FullKit 228", url: "/midi-files/Reggae/RS_4-4_NmlStr_T017_FullKit_228.mid" },
+    { genre: 'Reggae', name: "RS 4-4 NmlStr T003 FullKit 230", url: "/midi-files/Reggae/RS_4-4_NmlStr_T003_FullKit_230.mid" },
+    { genre: 'Reggae', name: "RS 4-4 NmlMedSwg T000 FullKit 227", url: "/midi-files/Reggae/RS_4-4_NmlMedSwg_T000_FullKit_227.mid" },
+    { genre: 'Reggae', name: "RS 4-4 NmlStr T001 FullKit 229", url: "/midi-files/Reggae/RS_4-4_NmlStr_T001_FullKit_229.mid" },
+];
+
 function App() {
   // *** Add Render Counter ***
   const renderCount = useRef(0);
@@ -63,9 +194,8 @@ function App() {
   const [voicingRhRootless, setVoicingRhRootless] = useState(false);
   const [voicingUseShell, setVoicingUseShell] = useState(false);
   const [voicingAddOctaveRoot, setVoicingAddOctaveRoot] = useState(false);
-  // REMOVED redundant state formerly shadowed by useDrill return values
-  // const [currentDrillStep, setCurrentDrillStep] = useState({ expectedMidiNotes: [], type: null, stepIndex: 0, totalSteps: 0 }); 
-  // const [drillScore, setDrillScore] = useState({ correctNotes: 0, incorrectNotes: 0 });
+  // --- NEW: MIDI Backing Track Genre State ---
+  const [selectedMidiGenre, setSelectedMidiGenre] = useState(MIDI_GENRES[0]); // Default to first genre
 
   // Memoized array version for props that need it (like PianoKeyboard)
   const activeNotesArray = useMemo(() => Array.from(activeNotes), [activeNotes]);
@@ -466,7 +596,7 @@ function App() {
             }
         }
 
-        console.log(`App.jsx: Successfully processed ${romanNumeral} -> ${fullChordName}. FINAL MIDI: [${finalMidiNotes.join(', ')}]`);
+        console.log(`App.jsx: Successfully processed ${romanNumeral} -> ${fullChordName}. FINAL MIDI: [${finalMidiNotes.join(', ')}]`); // <-- Log the FINAL result
         chords.push({
           roman: romanNumeral,
           name: fullChordName,
@@ -647,153 +777,246 @@ function App() {
 
   // --- Event Handlers ---
   const handleModeChange = (newMode) => {
-    if (MODES.find(m => m.value === newMode)) {
-        setCurrentMode(newMode);
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to Mode change.');
     }
+    console.log(`App.jsx: handleModeChange - New Mode: ${newMode}`);
+    setCurrentMode(newMode);
+    // Reset related states when mode changes? e.g., reset drill, progression
   };
 
   const handleRootChange = (newRoot) => {
-    if (ROOT_NOTES.includes(newRoot)) {
-      setSelectedRootNote(newRoot);
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to Root Note change.');
     }
+    console.log(`App.jsx: handleRootChange - New Root: ${newRoot}`);
+    setSelectedRootNote(newRoot);
   };
 
   const handleOctaveChange = (newOctave) => {
-    const octaveNum = parseInt(newOctave, 10);
-    if (OCTAVES.includes(octaveNum)) {
-      setSelectedOctave(octaveNum);
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to Octave change.');
     }
+    // Ensure octave is treated as a number
+    const octaveNum = parseInt(newOctave, 10);
+    console.log(`App.jsx: handleOctaveChange - New Octave: ${octaveNum}`);
+    setSelectedOctave(octaveNum);
   };
 
   const handleScaleChange = (newScale) => {
-    if (SCALE_TYPES.includes(newScale)) {
-      setSelectedScaleType(newScale);
-      setCurrentMode('scale_display');
-      // Reset diatonic degree when scale changes
-      setSelectedDiatonicDegree(0);
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to Scale change.');
     }
+     // Reset diatonic degree when scale changes to avoid potential errors
+    console.log(`App.jsx: handleScaleChange - New Scale: ${newScale}. Resetting diatonic degree.`);
+    setSelectedScaleType(newScale);
+    setSelectedDiatonicDegree(0); // Reset degree index
+    // Reset progression selection? Depends on desired behavior
+    // setSelectedProgressionId(null); 
   };
 
    const handleChordChange = (newChord) => {
-    if (CHORD_TYPES.includes(newChord)) {
-      setSelectedChordType(newChord);
-      setCurrentMode('chord_search');
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to Chord Type change.');
     }
-  };
+     console.log(`App.jsx: handleChordChange - New Chord: ${newChord}`);
+     setSelectedChordType(newChord);
+   };
 
-  // New Handlers
+  // --- Diatonic Mode Handlers ---
   const handleDiatonicDegreeChange = (index) => {
-      setSelectedDiatonicDegree(index);
-      // Ensure mode is set correctly if interacting with degree buttons
-      if (currentMode !== 'diatonic_chords') {
-          setCurrentMode('diatonic_chords');
-      }
+     // Ensure index is treated as a number
+     const degreeIndex = parseInt(index, 10);
+    console.log(`App.jsx: handleDiatonicDegreeChange - New Degree Index: ${degreeIndex}`);
+     setSelectedDiatonicDegree(degreeIndex);
   };
+
   const handleShowSeventhsChange = (event) => {
-      setShowSevenths(event.target.checked);
-      // Reset inversion if switching from 7ths (3rd inv) to triads
-      if (!event.target.checked && rhInversion === 3) {
-          setRhInversion(0);
-      }
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to Show Sevenths change.');
+    }
+    const isChecked = event.target.checked;
+    console.log(`App.jsx: handleShowSeventhsChange - Checked: ${isChecked}`);
+    setShowSevenths(isChecked);
+    // Reset inversion if switching from 7ths (where 3rd inv exists) to triads
+    if (!isChecked && rhInversion === 3) {
+      console.log("App.jsx: Resetting RH inversion from 3rd (7ths only).");
+      setRhInversion(0);
+    }
   };
+
   const handleSplitHandVoicingChange = (event) => {
-      console.log("App.jsx: handleSplitHandVoicingChange - Setting splitHandVoicing to:", event.target.checked); // <-- LOG STATE CHANGE
-      setSplitHandVoicing(event.target.checked);
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to Split Hand Voicing (Diatonic) change.');
+    }
+    const isChecked = event.target.checked;
+    console.log(`App.jsx: handleSplitHandVoicingChange - Checked: ${isChecked}`);
+    setSplitHandVoicing(isChecked);
+    // Maybe reset interval if split hand is turned off? Or keep last value?
+    // if (!isChecked) setSplitHandInterval(24); // Example reset
   };
+
   const handleRhInversionChange = (newInversionValue) => {
-      const invIndex = parseInt(newInversionValue, 10);
-       // Prevent selecting 3rd inversion if not showing sevenths
-      if (!showSevenths && invIndex === 3) return; 
-      if (INVERSIONS.find(inv => inv.value === invIndex)) {
-          setRhInversion(invIndex);
-      }
-  };
-
-  // New handler for split hand interval
-  const handleSplitHandIntervalChange = (event) => {
-    const intervalValue = parseInt(event.target.value, 10);
-    if (intervalValue === 12 || intervalValue === 24) {
-      setSplitHandInterval(intervalValue);
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to RH Inversion change.');
     }
-  };
-
-  // New handlers for drill options
-  const handleDrillOctavesChange = (event) => {
-    const value = parseInt(event.target.value, 10);
-    if (value >= 1 && value <= 4) { // Limit octaves, e.g., 1-4
-        setDrillNumOctaves(value);
-    }
-  };
-
-  const handleDrillRepetitionsChange = (event) => {
-     const value = parseInt(event.target.value, 10);
-     if (value >= 1 && value <= 10) { // Limit repetitions, e.g., 1-10
-        setDrillRepetitions(value);
+     // Ensure value is treated as a number
+     const inversionNum = parseInt(newInversionValue, 10);
+     console.log(`App.jsx: handleRhInversionChange - New Inversion: ${inversionNum}`);
+     // Add validation if needed (e.g., prevent 3rd inv if !showSevenths)
+     if (!showSevenths && inversionNum === 3) {
+        console.warn("App.jsx: Cannot select 3rd inversion for triads. Setting to Root Pos.");
+        setRhInversion(0);
+     } else {
+        setRhInversion(inversionNum);
      }
   };
 
-  // New handler for drill style
+  const handleSplitHandIntervalChange = (event) => {
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to Split Hand Interval change.');
+    }
+    // Ensure value is treated as a number
+    const intervalNum = parseInt(event.target.value, 10);
+    console.log(`App.jsx: handleSplitHandIntervalChange - New Interval: ${intervalNum}`);
+    setSplitHandInterval(intervalNum);
+  };
+
+  // --- Drill Handlers ---
+  const handleDrillOctavesChange = (event) => {
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to Drill Octaves change.');
+    }
+    const numOctaves = parseInt(event.target.value, 10);
+    console.log(`App.jsx: handleDrillOctavesChange - Num Octaves: ${numOctaves}`);
+    setDrillNumOctaves(numOctaves);
+  };
+
+  const handleDrillRepetitionsChange = (event) => {
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to Drill Repetitions change.');
+    }
+    const numRepetitions = parseInt(event.target.value, 10);
+    console.log(`App.jsx: handleDrillRepetitionsChange - Repetitions: ${numRepetitions}`);
+    setDrillRepetitions(numRepetitions);
+  };
+
   const handleDrillStyleChange = (event) => {
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to Drill Style change.');
+    }
     const newStyle = event.target.value;
-    // Add validation if needed, e.g., ensure it's one of the expected values
+    console.log(`App.jsx: handleDrillStyleChange - Style: ${newStyle}`);
     setDrillStyle(newStyle);
   };
 
   const handleDrillToggle = () => {
-    const startingDrill = !isDrillActive;
-    if (startingDrill) {
-        // Set the options for the drill instance when starting
+    const nextDrillState = !isDrillActive;
+    console.log(`App.jsx: handleDrillToggle - Setting drill active: ${nextDrillState}`);
+    
+    // --- Re-add setting drillOptions when STARTING the drill ---
+    if (nextDrillState) {
         setDrillOptions({
-            octaves: drillNumOctaves, // Pass the range setting
-            repetitions: drillRepetitions,
-            style: drillStyle // Pass the selected style
+            octaves: drillNumOctaves, // Use the state variable
+            repetitions: drillRepetitions, // Use the state variable
+            style: drillStyle // Use the state variable
         });
+        console.log(`App.jsx: handleDrillToggle - Set drillOptions to:`, { octaves: drillNumOctaves, repetitions: drillRepetitions, style: drillStyle });
     } else {
-        // Reset options or leave them? Let's clear for now.
-        setDrillOptions({});
+        // Optionally clear options when stopping? Or leave them?
+        // setDrillOptions({}); // Keep options for potential restart?
     }
-    setIsDrillActive(startingDrill);
+    // --- End re-added logic ---
+
+    setIsDrillActive(nextDrillState);
+    // If starting drill, reset score? (Drill hook resets internally now)
+    // if (nextDrillState) {
+    //   setDrillScore({ correctNotes: 0, incorrectNotes: 0 }); 
+    // }
   };
 
-  // New handler for selecting a progression
+  // --- Progression Mode Handlers ---
   const handleProgressionChange = (newProgressionId) => {
-    if (availableProgressions.find(p => p.id === newProgressionId)) {
-        setSelectedProgressionId(newProgressionId);
-        // Optionally set mode if interacting with progression controls?
-        // if (currentMode !== 'chord_progression') {
-        //     setCurrentMode('chord_progression');
-        // }
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to Progression change.');
     }
+    console.log(`App.jsx: handleProgressionChange - Selected Progression ID: ${newProgressionId}`);
+    setSelectedProgressionId(newProgressionId);
   };
 
-  // --- NEW: Voicing Handlers ---
+  // --- Voicing Handlers ---
   const handleVoicingSplitHandChange = (event) => {
-    console.log("App.jsx: handleVoicingSplitHandChange - Setting voicingSplitHand to:", event.target.checked); // <-- LOG STATE CHANGE
-    setVoicingSplitHand(event.target.checked);
-    // Reset rootless option if split hand is turned off?
-    if (!event.target.checked) {
-      setVoicingRhRootless(false);
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to Voicing Split Hand change.');
     }
+    const isChecked = event.target.checked;
+    console.log(`App.jsx: handleVoicingSplitHandChange - Checked: ${isChecked}`);
+    setVoicingSplitHand(isChecked);
+    // Optionally reset LH offset if split hand is turned off
+    // if (!isChecked) setVoicingLhOctaveOffset(-12); 
   };
 
   const handleVoicingLhOffsetChange = (newValue) => {
-    const offset = parseInt(newValue, 10);
-    if (offset === -12 || offset === -24) {
-      setVoicingLhOctaveOffset(offset);
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to Voicing LH Offset change.');
     }
+    const offsetNum = parseInt(newValue, 10);
+    console.log(`App.jsx: handleVoicingLhOffsetChange - Offset: ${offsetNum}`);
+    setVoicingLhOctaveOffset(offsetNum);
   };
 
   const handleVoicingRhRootlessChange = (event) => {
-    setVoicingRhRootless(event.target.checked);
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to Voicing RH Rootless change.');
+    }
+    const isChecked = event.target.checked;
+    console.log(`App.jsx: handleVoicingRhRootlessChange - Checked: ${isChecked}`);
+    setVoicingRhRootless(isChecked);
   };
-
   const handleVoicingUseShellChange = (event) => {
-    setVoicingUseShell(event.target.checked);
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to Voicing Use Shell change.');
+    }
+    const isChecked = event.target.checked;
+    console.log(`App.jsx: handleVoicingUseShellChange - Checked: ${isChecked}`);
+    setVoicingUseShell(isChecked);
+  };
+  const handleVoicingAddOctaveRootChange = (event) => {
+    if (isDrillActive) {
+        setIsDrillActive(false);
+        console.log('Drill stopped due to Voicing Add Octave Root change.');
+    }
+    const isChecked = event.target.checked;
+    console.log(`App.jsx: handleVoicingAddOctaveRootChange - Checked: ${isChecked}`);
+    setVoicingAddOctaveRoot(isChecked);
   };
 
-  const handleVoicingAddOctaveRootChange = (event) => {
-    setVoicingAddOctaveRoot(event.target.checked);
+  // --- MIDI Backing Track Genre Handler ---
+  const handleMidiGenreChange = (newGenre) => {
+      console.log(`App.jsx: handleMidiGenreChange - New Genre: ${newGenre}`);
+      setSelectedMidiGenre(newGenre);
+      // When genre changes, maybe stop the current track and clear selection?
+      // stopMidiFile(); // Assuming stopMidiFile is available from useMidiPlayer
+      // Or perhaps just let the Controls component handle filtering
   };
+
 
   // console.log('App.jsx - ROOT_NOTES:', ROOT_NOTES);
   // console.log('App.jsx - Notes to Highlight:', notesToHighlight);
@@ -916,36 +1139,16 @@ function App() {
           // --- MIDI Player Props ---
           playbackState={playbackState}
           loadedMidiFileName={loadedFileName} // Pass the name of the loaded file
-          availableMidiFiles={[
-              // Dynamically generated from public/midi-files (needs update if files change)
-              { name: "9-8 NmlStr Tambourine 141", url: "/Piano_Helper/midi-files/JBB_9-8_NmlStr_Tambourine_141.mid" },
-              { name: "4-4 NmlStr Triangles 130", url: "/Piano_Helper/midi-files/JBB_4-4_NmlStr_Triangles_130.mid" },
-              { name: "4-4 NmlStr Toms 129", url: "/Piano_Helper/midi-files/JBB_4-4_NmlStr_Toms_129.mid" },
-              { name: "3-4 NmlStr Shaker 128", url: "/Piano_Helper/midi-files/JBB_3-4_NmlStr_Shaker_128.mid" },
-              { name: "3-4 NmlStr Kicks 127", url: "/Piano_Helper/midi-files/JBB_3-4_NmlStr_Kicks_127.mid" },
-              { name: "3-4 NmlStr HiHats 126", url: "/Piano_Helper/midi-files/JBB_3-4_NmlStr_HiHats_126.mid" },
-              { name: "3-4 NmlStr Cowbell 125", url: "/Piano_Helper/midi-files/JBB_3-4_NmlStr_Cowbell_125.mid" },
-              { name: "3-4 NmlMedSwg Snares 124", url: "/Piano_Helper/midi-files/JBB_3-4_NmlMedSwg_Snares_124.mid" },
-              { name: "3-4 NmlMedSwg Rides 123", url: "/Piano_Helper/midi-files/JBB_3-4_NmlMedSwg_Rides_123.mid" },
-              { name: "2-4 NmlStr Cabasa 122", url: "/Piano_Helper/midi-files/JBB_2-4_NmlStr_Cabasa_122.mid" },
-              { name: "12-8 NmlStr Congas 145", url: "/Piano_Helper/midi-files/JBB_12-8_NmlStr_Congas_145.mid" },
-              { name: "12-8 NmlStr Bongos 144", url: "/Piano_Helper/midi-files/JBB_12-8_NmlStr_Bongos_144.mid" },
-              { name: "9-8 NmlStr T024 FullKit 117", url: "/Piano_Helper/midi-files/JBB_9-8_NmlStr_T024_FullKit_117.mid" },
-              { name: "12-8 NmlStr T096 FullKit 120", url: "/Piano_Helper/midi-files/JBB_12-8_NmlStr_T096_FullKit_120.mid" },
-              { name: "6-8 NmlStr T057 FullKit 115", url: "/Piano_Helper/midi-files/JBB_6-8_NmlStr_T057_FullKit_115.mid" },
-              { name: "4-4 NmlStr T088 FullKit 109", url: "/Piano_Helper/midi-files/JBB_4-4_NmlStr_T088_FullKit_109.mid" },
-              { name: "4-4 NmlStr T009 FullKit 110", url: "/Piano_Helper/midi-files/JBB_4-4_NmlStr_T009_FullKit_110.mid" },
-              { name: "4-4 NmlMedSwg T076 FullKit 108", url: "/Piano_Helper/midi-files/JBB_4-4_NmlMedSwg_T076_FullKit_108.mid" },
-              { name: "4-4 NmlMedSwg T069 FullKit 106", url: "/Piano_Helper/midi-files/JBB_4-4_NmlMedSwg_T069_FullKit_106.mid" },
-              { name: "4-4 NmlMedSwg T008 FullKit 107", url: "/Piano_Helper/midi-files/JBB_4-4_NmlMedSwg_T008_FullKit_107.mid" },
-              { name: "4-4 DblTmMedSwg T017 FullKit 103", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T017_FullKit_103.mid" },
-              { name: "4-4 DblTmMedSwg T014 FullKit 104", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T014_FullKit_104.mid" },
-              { name: "4-4 DblTmMedSwg T007 FullKit 102", url: "/Piano_Helper/midi-files/JBB_4-4_DblTmMedSwg_T007_FullKit_102.mid" },
-          ]}
+          availableMidiFiles={ALL_MIDI_FILES} // Pass the FULL list
           onLoadMidiFile={loadMidiFile}
           onPlayMidiFile={playMidiFile}
           onPauseMidiFile={pauseMidiFile}
           onStopMidiFile={stopMidiFile}
+
+          // MIDI Backing Track Props <-- UPDATED
+          midiGenres={MIDI_GENRES} // Pass the list of genres
+          selectedMidiGenre={selectedMidiGenre} // Pass the selected genre
+          onMidiGenreChange={handleMidiGenreChange} // Pass the handler
         />
         <DrillControls 
           style={{ flex: 1 }} // DrillControls takes 1 part

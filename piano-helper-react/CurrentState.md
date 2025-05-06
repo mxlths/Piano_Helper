@@ -92,3 +92,40 @@ This structure provides a solid foundation. The plan for the Chord Progression m
 ## MIDI Output
 
 - **Sending Messages:** The `
+
+## Backing Track Tab
+
+*   **Purpose**: Allows the user to load and control playback of pre-recorded MIDI backing tracks (drum loops, etc.).
+*   **Components Involved**:
+    *   `App.jsx`: Manages the list of available MIDI files (`ALL_MIDI_FILES` constant, including genre and URL) and the selected genre state (`selectedMidiGenre`, `setSelectedMidiGenre`). Passes these and playback control functions (`loadMidiFile`, `playMidiFile`, etc.) to `Controls`.
+    *   `Controls.jsx`: Displays the "Backing Track" tab UI. Includes:
+        *   A dropdown (`midi-genre-select`) to select the desired **Genre** from the `midiGenres` prop (defined in `App.jsx`). Populated by `MIDI_GENRES` constant in `App.jsx`.
+        *   A dropdown (`midi-file-select`) to select a specific **MIDI Track** from the `availableMidiFiles` prop, filtered by the `selectedMidiGenre` state.
+        *   Playback buttons (Play, Pause, Stop) which call the corresponding functions received from `App.jsx` (`onPlayMidiFile`, `onPauseMidiFile`, `onStopMidiFile`).
+        *   Displays the `loadedMidiFileName` and current `playbackState` received from `App.jsx`.
+    *   `useMidiPlayer.js`: The hook responsible for the actual MIDI file loading (using `MidiPlayer.loadDataUri()`) and playback logic (using `MidiPlayer.play()`, `.pause()`, `.stop()`). It interacts with `useMidi` to send MIDI messages via `sendMessage`.
+*   **State:**
+    *   `App.jsx`:
+        *   `selectedMidiGenre`: Stores the currently selected genre string (e.g., 'Jazz', 'Latin').
+        *   `ALL_MIDI_FILES`: A constant array of objects, each containing `{ genre: string, name: string, url: string }` for all available backing tracks.
+        *   `MIDI_GENRES`: A constant array listing the available genre strings.
+    *   `useMidiPlayer.js`:
+        *   `player`: Holds the `MidiPlayer` instance.
+        *   `playbackState`: Tracks the current state ('stopped', 'playing', 'paused').
+        *   `loadedFileName`: Stores the `name` property of the currently loaded MIDI file.
+*   **Functionality**:
+    1.  `App.jsx` defines the `ALL_MIDI_FILES` array (mapping names to URLs and genres) and the `MIDI_GENRES` array.
+    2.  `App.jsx` passes `ALL_MIDI_FILES`, `MIDI_GENRES`, `selectedMidiGenre`, and `handleMidiGenreChange` down to `Controls.jsx`.
+    3.  `Controls.jsx` displays the genre dropdown. When changed, it calls `onMidiGenreChange` (which updates `selectedMidiGenre` in `App.jsx`).
+    4.  `Controls.jsx` filters `availableMidiFiles` based on `selectedMidiGenre` using `useMemo`.
+    5.  The filtered list populates the track selection dropdown.
+    6.  When a track is selected from the dropdown, `Controls.jsx` calls `onLoadMidiFile` (passed from `App.jsx`, which calls `loadMidiFile` from `useMidiPlayer`) with the selected file's URL.
+    7.  `useMidiPlayer` uses `MidiPlayer.loadDataUri(url)` to fetch and load the MIDI file data.
+    8.  `useMidiPlayer` updates `loadedFileName` state.
+    9.  Playback buttons in `Controls.jsx` call `onPlay/Pause/StopMidiFile` (passed from `App.jsx`), which trigger the corresponding functions in `useMidiPlayer` (`play`, `pause`, `stop`).
+    10. `useMidiPlayer` uses the `sendMessage` function (obtained from `useMidi` via `App.jsx`) to send MIDI events from the loaded file to the selected MIDI output during playback.
+*   **User Interaction**:
+    *   Select a **Genre** from the first dropdown.
+    *   Select a **Track** from the second dropdown (filtered by genre).
+    *   Use the Play/Pause/Stop buttons to control playback.
+    *   Playback requires a MIDI Output device to be selected in the "Setup" tab.

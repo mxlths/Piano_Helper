@@ -6,9 +6,9 @@ function PianoKeyboard({ rootNote, notesToHighlight = [], playedNotes = [], expe
   // console.log('PianoKeyboard received playedNotes:', playedNotes);
   // console.log('PianoKeyboard received expectedNotes:', expectedNotes);
   const startNote = 36; // C2
-  const numOctaves = 4; // Increased to 4 octaves
-  const numWhiteKeys = 7 * numOctaves + 1; // Include the C at the end of the second octave
-  const numKeys = 12 * numOctaves + 1;
+  const numOctaves = 5; // Increased to 5 octaves
+  const numWhiteKeys = 7 * numOctaves + 1; // Include the C at the end
+  const numKeys = 12 * numOctaves + 1; // Include the C at the end
 
   useEffect(() => {
     const canvas = canvasRef.current;
