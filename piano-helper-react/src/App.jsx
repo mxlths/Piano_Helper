@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import Controls from './components/Controls';
 import InfoDisplay from './components/InfoDisplay';
 import MidiMonitorDisplay from './components/MidiMonitorDisplay';
+import WebMidi from 'webmidi';
 import PianoKeyboard from './components/PianoKeyboard';
 import useMidi from './hooks/useMidi'; // Import the custom hook
 import useMetronome from './hooks/useMetronome.js'; // Import the metronome hook
@@ -196,6 +197,33 @@ function App() {
   const [voicingAddOctaveRoot, setVoicingAddOctaveRoot] = useState(false);
   // --- NEW: MIDI Backing Track Genre State ---
   const [selectedMidiGenre, setSelectedMidiGenre] = useState(MIDI_GENRES[0]); // Default to first genre
+  // --- REMOVE State for MIDI Initialization Status --- 
+  // const [midiInitializedStatus, setMidiInitializedStatus] = useState(false);
+  const [isMidiReady, setIsMidiReady] = useState(false); // Renamed state
+
+  // *** Define callback for MIDI initialization HERE ***
+  const handleMidiInitialized = () => { // No longer accepts lists
+    console.log("[App.jsx] handleMidiInitialized signal received! Setting isMidiReady.");
+    setIsMidiReady(true);
+    // Fetch devices DIRECTLY from WebMidi object now that it's enabled
+    if (WebMidi.enabled) {
+      console.log("[App.jsx] Fetching devices directly from WebMidi...");
+      const inputs = WebMidi.inputs.map(i => ({ id: i.id, name: i.name }));
+      const outputs = WebMidi.outputs.map(o => ({ id: o.id, name: o.name }));
+      console.log("[App.jsx] Fetched Inputs:", inputs);
+      console.log("[App.jsx] Fetched Outputs:", outputs);
+      setAvailableMidiInputs(inputs || []);
+      setAvailableMidiOutputs(outputs || []);
+    } else {
+      console.warn("[App.jsx] handleMidiInitialized called, but WebMidi is not enabled? Cannot fetch devices.");
+      setAvailableMidiInputs([]);
+      setAvailableMidiOutputs([]);
+    }
+  };
+  
+      // --- State for MIDI Device Lists ---
+      const [availableMidiInputs, setAvailableMidiInputs] = useState([]);
+      const [availableMidiOutputs, setAvailableMidiOutputs] = useState([]);
 
   // Memoized array version for props that need it (like PianoKeyboard)
   const activeNotesArray = useMemo(() => Array.from(activeNotes), [activeNotes]);
@@ -636,34 +664,39 @@ function App() {
   // --- Instantiate Hooks ---
 
   // ** Call useMidi FIRST and pass callbacks **
-  const {
-    isInitialized: isMidiInitialized,
-    inputs: midiInputs,
-    outputs: midiOutputs,
-    selectedInputId,
-    selectedOutputId,
-    logMessages: midiLogMessages,
-    selectInput: selectMidiInput,
-    selectOutput: selectMidiOutput,
-    sendMessage: sendMidiMessage, // <-- Get sendMessage
-  } = useMidi({ 
-      onNoteOn: handleNoteOn, 
-      onNoteOff: handleNoteOff 
-  }); // <-- Pass callbacks
+  const midiHookResult = useMidi({ 
+    onNoteOn: handleNoteOn, 
+    onNoteOff: handleNoteOff, 
+    onInitialized: handleMidiInitialized // Pass the new handler
+  });
+  // *** Log the entire object returned by the hook ***
+  console.log('[App.jsx] Raw return value from useMidi():', midiHookResult);
+
+    // *** Destructure ONLY what's needed now (selectors, sendMessage, logs) ***
+    const {
+      // midiInputs = [], // <-- REMOVED, using state
+      // midiOutputs = [], // <-- REMOVED, using state
+      selectedInputId,
+      selectedOutputId,
+      logMessages,
+      selectInput,
+      selectOutput,
+      sendMessage,
+     } = midiHookResult || {};
 
   // ** Instantiate useMidiPlayer AFTER useMidi **
   const {
       playbackState,
-      loadedFileName,
+      loadedFileName: loadedMidiFileName, // <-- RENAME HERE
       loadMidiFile,
       play: playMidiFile,
       pause: pauseMidiFile,
       stop: stopMidiFile,
-  } = useMidiPlayer(sendMidiMessage); // <-- Pass sendMessage
+  } = useMidiPlayer(sendMessage); // <-- Pass sendMessage
 
   // ** Instantiate useDrill AFTER useMidi **
   const {
-    currentDrillStep: drillStepData, // Renamed for clarity
+    currentDrillStep: drillStepData, // The actual variable name
     drillScore: currentDrillScore
   } = useDrill({
     isDrillActive,
@@ -688,16 +721,25 @@ function App() {
 
   // ** Instantiate useMetronome AFTER useMidi **
   const {
-    isPlaying: isMetronomePlaying,
-    bpm: metronomeBpm,
-    selectedSoundNote: metronomeSoundNote,
-    availableSounds: metronomeSounds,
-    timeSignature: metronomeTimeSignature,
-    togglePlay: toggleMetronomePlay,
-    changeTempo: changeMetronomeTempo,
-    changeSound: changeMetronomeSound,
-    changeTimeSignature: changeMetronomeTimeSignature,
-  } = useMetronome(sendMidiMessage); // Pass the sendMessage function
+    isMetronomePlaying,
+    metronomeBpm,
+    metronomeSoundNote, // The currently selected MIDI note value
+    metronomeTimeSignature,
+    metronomeSounds,   // The original object: { name: note, ... }
+    toggleMetronome,
+    changeMetronomeTempo,
+    changeMetronomeSound, // Handler expects the note value
+    changeMetronomeTimeSignature,
+  } = useMetronome(sendMessage); // Pass sendMessage
+
+  // *** Convert metronomeSounds object to an array for MUI Select ***
+  const metronomeSoundsArray = useMemo(() => {
+    // Ensure metronomeSounds is an object before trying to convert
+    if (typeof metronomeSounds === 'object' && metronomeSounds !== null) {
+      return Object.entries(metronomeSounds).map(([name, note]) => ({ name, note }));
+    }
+    return []; // Return empty array if not an object
+  }, [metronomeSounds]);
 
   // --- Calculated Values ---
   const notesToHighlight = useMemo(() => {
@@ -1017,158 +1059,182 @@ function App() {
       // Or perhaps just let the Controls component handle filtering
   };
 
+  // *** ADD BACK: Calculate selectedChordInfo for Chord Search mode ***
+  const selectedChordInfo = useMemo(() => {
+    if (currentMode === 'chord_search' && selectedChordType) {
+      try {
+        // Construct the chord name with octave for TonalJS
+        const chordNameWithOctave = `${selectedRootNote}${selectedOctave}${selectedChordType}`;
+        const info = Chord.get(chordNameWithOctave); // Use Chord.get for full info
+        // console.log(`App.jsx - Calculated chordInfo for ${chordNameWithOctave}:`, info); // Optional log
+        return info;
+      } catch (e) {
+        console.error(`Error getting chord info for ${selectedChordType} at ${selectedRootNote}${selectedOctave}:`, e);
+        return Chord.get(''); // Return empty chord on error
+      }
+    } 
+    return Chord.get(''); // Return empty chord if not in chord_search mode
+  }, [currentMode, selectedChordType, selectedRootNote, selectedOctave]);
 
   // console.log('App.jsx - ROOT_NOTES:', ROOT_NOTES);
   // console.log('App.jsx - Notes to Highlight:', notesToHighlight);
 
+  // *** Find the full selected progression object FOR InfoDisplay ***
+  const selectedProgressionDetails = useMemo(() => {
+      return availableProgressions.find(p => p.id === selectedProgressionId);
+  }, [selectedProgressionId, availableProgressions]);
+
+  // *** Log the new state variable ***
+  console.log('[App.jsx] Value of isMidiReady state before return:', isMidiReady);
+
+    // *** Log the state arrays ***
+    console.log('[App.jsx] Available midiInputs state before return:', availableMidiInputs);
+    console.log('[App.jsx] Available midiOutputs state before return:', availableMidiOutputs);
+
   return (
-    <div className="App">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <h1>Piano Helper (React Version)</h1>
+      <div style={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
+        {/* Left Column (Keyboard & Info) */}
+        <div style={{ display: 'flex', flexDirection: 'column', width: '60%', paddingRight: '10px' }}>
+          <div style={{ border: '1px solid green', padding: '10px', marginBottom: '10px', flexShrink: 0 }}>
+            <PianoKeyboard 
+              octaveCount={5} 
+              startOctave={2}
+              notesToHighlight={notesToHighlight} 
+              playedNotes={activeNotesArray} // Use the array version
+              expectedNotes={drillStepData?.expectedMidiNotes || []} 
+            />
+          </div>
+          <div style={{ border: '1px solid orange', padding: '10px', flexShrink: 0 }}>
+             <InfoDisplay 
+                mode={currentMode}
+                scaleInfo={scaleInfo} 
+                chordInfo={selectedChordInfo} // *** Pass the newly calculated value ***
+                selectedDiatonicDegree={selectedDiatonicDegree} 
+                diatonicChords={showSevenths ? diatonicSevenths : diatonicTriads} 
+                rootNote={selectedRootNote} // Pass rootNote
+                calculatedDiatonicChordNotes={calculatedDiatonicChordNotes} // Pass calculated notes
+                selectedProgressionDetails={selectedProgressionDetails} // *** Pass the newly calculated value ***
+                calculatedProgressionChords={calculatedProgressionChords} // Pass voiced progression chords
+             />
+          </div>
+        </div>
 
-      <PianoKeyboard
-        rootNote={rootNoteMidi}
-        notesToHighlight={notesToHighlight}
-        octaveRange={OCTAVES}
-        playedNotes={activeNotesArray} // <-- Pass the memoized array from App state
-        expectedNotes={isDrillActive ? drillStepData.expectedMidiNotes : []} // <-- Pass expected notes
-        lowestNote={48} // Example: C3
-      />
-      {/* Flex container for Info, Controls, and Drills */}
-      <div style={{ display: 'flex', gap: '20px', marginTop: '10px', alignItems: 'flex-start' }}>
-        <InfoDisplay
-          style={{ flex: 1 }} // InfoDisplay takes 1 part
-          selectedRoot={selectedRootWithOctave}
-          selectedScaleType={selectedScaleType}
-          selectedChordType={selectedChordType}
-          currentMode={currentMode}
-          diatonicTriads={diatonicTriads}
-          diatonicSevenths={diatonicSevenths}
-          selectedDiatonicDegree={selectedDiatonicDegree}
-          showSevenths={showSevenths}
-          selectedProgression={selectedProgressionObject}
-          transposedProgressionChords={calculatedProgressionChords}
-        />
-        <Controls
-          style={{ flex: 2 }} // Controls takes 2 parts
-          // Mode
-          modes={MODES}
-          currentMode={currentMode}
-          onModeChange={handleModeChange}
+        {/* Right Column (Controls & Monitor) */}
+        <div style={{ display: 'flex', flexDirection: 'column', width: '40%', overflowY: 'auto' }}>
+           <Controls
+              // Mode
+              modes={MODES}
+              currentMode={currentMode}
+              onModeChange={handleModeChange}
 
-          // Root/Scale/Chord Search Props
-          rootNotes={ROOT_NOTES}
-          octaves={OCTAVES}
-          scaleTypes={SCALE_TYPES}
-          chordTypes={CHORD_TYPES} // For chord_search mode
-          selectedRootNote={selectedRootNote}
-          selectedOctave={selectedOctave}
-          selectedScaleType={selectedScaleType}
-          selectedChordType={selectedChordType} // For chord_search mode
-          onRootChange={handleRootChange}
-          onOctaveChange={handleOctaveChange}
-          onScaleChange={handleScaleChange}
-          onChordChange={handleChordChange} // For chord_search mode
+              // Root/Scale/Chord Props
+              rootNotes={ROOT_NOTES}
+              octaves={OCTAVES}
+              scaleTypes={SCALE_TYPES}
+              chordTypes={CHORD_TYPES}
+              selectedRootNote={selectedRootNote}
+              selectedOctave={selectedOctave}
+              selectedScaleType={selectedScaleType}
+              selectedChordType={selectedChordType}
+              onRootChange={handleRootChange}
+              onOctaveChange={handleOctaveChange}
+              onScaleChange={handleScaleChange}
+              onChordChange={handleChordChange}
 
-          // Diatonic Chord Mode Props - CORRECTED
-          diatonicTriads={diatonicTriads} // Pass the calculated triads
-          diatonicSevenths={diatonicSevenths} // Pass the calculated sevenths
-          selectedDiatonicDegree={selectedDiatonicDegree}
-          showSevenths={showSevenths}
-          splitHandVoicing={splitHandVoicing}
-          rhInversion={rhInversion}
-          inversions={INVERSIONS} 
-          onDiatonicDegreeChange={handleDiatonicDegreeChange}
-          onShowSeventhsChange={handleShowSeventhsChange}
-          onSplitHandVoicingChange={handleSplitHandVoicingChange}
-          onRhInversionChange={handleRhInversionChange}
-          splitHandInterval={splitHandInterval}
-          onSplitHandIntervalChange={handleSplitHandIntervalChange}
+              // Diatonic Chord Mode Props
+              diatonicTriads={diatonicTriads}
+              diatonicSevenths={diatonicSevenths}
+              selectedDiatonicDegree={selectedDiatonicDegree}
+              showSevenths={showSevenths}
+              splitHandVoicing={splitHandVoicing} // Diatonic-specific split hand flag
+              rhInversion={rhInversion}
+              inversions={INVERSIONS.map(inv => ({ // Filter inversions based on 7ths for display
+                  ...inv, 
+                  disabled: inv.value === 3 && !showSevenths 
+              }))}
+              onDiatonicDegreeChange={handleDiatonicDegreeChange}
+              onShowSeventhsChange={handleShowSeventhsChange}
+              onSplitHandVoicingChange={handleSplitHandVoicingChange} // Diatonic handler
+              onRhInversionChange={handleRhInversionChange}
+              splitHandInterval={splitHandInterval}
+              onSplitHandIntervalChange={handleSplitHandIntervalChange}
+              
+              // MIDI Props
+              midiInputs={availableMidiInputs} // Pass state variable
+              midiOutputs={availableMidiOutputs} // Pass state variable
+              selectedInputId={selectedInputId}
+              selectedOutputId={selectedOutputId}
+              onSelectInput={selectInput}   // *** Pass correct function ***
+              onSelectOutput={selectOutput}  // *** Pass correct function ***
+              // *** Pass the memoized value ***
+              isMidiInitialized={isMidiReady}
+              
+              // Metronome Props
+              isMetronomePlaying={isMetronomePlaying}
+              metronomeBpm={metronomeBpm}
+              metronomeSoundNote={metronomeSoundNote} // Pass the selected note value
+              metronomeSounds={metronomeSoundsArray} // *** PASS THE ARRAY ***
+              metronomeTimeSignature={metronomeTimeSignature}
+              onToggleMetronome={toggleMetronome}
+              onChangeMetronomeTempo={changeMetronomeTempo}
+              onChangeMetronomeSound={changeMetronomeSound} // Handler expects the note value
+              onChangeMetronomeTimeSignature={changeMetronomeTimeSignature}
+              
+              // MIDI Player Props
+              playbackState={playbackState}
+              loadedMidiFileName={loadedMidiFileName} // *** Should now be defined ***
+              availableMidiFiles={ALL_MIDI_FILES} // Pass all files
+              onLoadMidiFile={loadMidiFile}
+              onPlayMidiFile={playMidiFile}
+              onPauseMidiFile={pauseMidiFile}
+              onStopMidiFile={stopMidiFile}
+              // MIDI Genre Props
+              midiGenres={MIDI_GENRES} // Pass available genres
+              selectedMidiGenre={selectedMidiGenre}
+              onMidiGenreChange={handleMidiGenreChange} // Pass handler
 
-          // MIDI Props
-          midiInputs={midiInputs}
-          midiOutputs={midiOutputs}
-          selectedInputId={selectedInputId}
-          selectedOutputId={selectedOutputId}
-          onSelectInput={selectMidiInput}
-          onSelectOutput={selectMidiOutput}
-          isMidiInitialized={isMidiInitialized}
-          sendMessage={sendMidiMessage}
+              // Chord Progression Props
+              availableProgressions={availableProgressions}
+              selectedProgressionId={selectedProgressionId}
+              onProgressionChange={handleProgressionChange}
 
-          // Progression Mode Props <-- NEW
-          availableProgressions={availableProgressions}
-          selectedProgressionId={selectedProgressionId}
-          onProgressionChange={handleProgressionChange}
+              // Voicing Props (Passed for Chord Progression display)
+              voicingSplitHand={voicingSplitHand} // Use shared state
+              voicingLhOctaveOffset={voicingLhOctaveOffset}
+              voicingRhRootless={voicingRhRootless}
+              onVoicingSplitHandChange={handleVoicingSplitHandChange} // Use shared handler
+              onVoicingLhOffsetChange={handleVoicingLhOffsetChange}
+              onVoicingRhRootlessChange={handleVoicingRhRootlessChange}
+              voicingUseShell={voicingUseShell} 
+              voicingAddOctaveRoot={voicingAddOctaveRoot}
+              onVoicingUseShellChange={handleVoicingUseShellChange}
+              onVoicingAddOctaveRootChange={handleVoicingAddOctaveRootChange}
 
-          // Voicing Props <-- NEW
-          voicingSplitHand={voicingSplitHand}
-          voicingLhOctaveOffset={voicingLhOctaveOffset}
-          voicingRhRootless={voicingRhRootless}
-          onVoicingSplitHandChange={handleVoicingSplitHandChange}
-          onVoicingLhOffsetChange={handleVoicingLhOffsetChange}
-          onVoicingRhRootlessChange={handleVoicingRhRootlessChange}
-          onVoicingUseShellChange={handleVoicingUseShellChange}
-          onVoicingAddOctaveRootChange={handleVoicingAddOctaveRootChange}
-
-          // Metronome Props
-          isMetronomePlaying={isMetronomePlaying}
-          metronomeBpm={metronomeBpm}
-          metronomeSoundNote={metronomeSoundNote}
-          metronomeSounds={metronomeSounds}
-          metronomeTimeSignature={metronomeTimeSignature}
-          onToggleMetronome={toggleMetronomePlay}
-          onChangeMetronomeTempo={changeMetronomeTempo}
-          onChangeMetronomeSound={changeMetronomeSound}
-          onChangeMetronomeTimeSignature={changeMetronomeTimeSignature}
-
-          // --- Drill Props ---
-          isDrillActive={isDrillActive}
-          setIsDrillActive={handleDrillToggle}
-          drillOptions={drillOptions} // Pass the active options
-          setDrillOptions={setDrillOptions} // Should this be removed? Options set on toggle.
-          currentDrillStep={drillStepData}
-          drillScore={currentDrillScore}
-          // New props for configuration
-          drillNumOctaves={drillNumOctaves}
-          drillRepetitions={drillRepetitions}
-          onDrillOctavesChange={handleDrillOctavesChange}
-          onDrillRepetitionsChange={handleDrillRepetitionsChange}
-          // Pass style state and handler
-          drillStyle={drillStyle}
-          onDrillStyleChange={handleDrillStyleChange}
-
-          // --- MIDI Player Props ---
-          playbackState={playbackState}
-          loadedMidiFileName={loadedFileName} // Pass the name of the loaded file
-          availableMidiFiles={ALL_MIDI_FILES} // Pass the FULL list
-          onLoadMidiFile={loadMidiFile}
-          onPlayMidiFile={playMidiFile}
-          onPauseMidiFile={pauseMidiFile}
-          onStopMidiFile={stopMidiFile}
-
-          // MIDI Backing Track Props <-- UPDATED
-          midiGenres={MIDI_GENRES} // Pass the list of genres
-          selectedMidiGenre={selectedMidiGenre} // Pass the selected genre
-          onMidiGenreChange={handleMidiGenreChange} // Pass the handler
-        />
-        <DrillControls 
-          style={{ flex: 1 }} // DrillControls takes 1 part
-          currentMode={currentMode} // Pass mode for style disabling
-          isDrillActive={isDrillActive}
-          setIsDrillActive={handleDrillToggle} // Use the toggle handler
-          drillNumOctaves={drillNumOctaves}
-          drillRepetitions={drillRepetitions}
-          drillStyle={drillStyle}
-          onDrillOctavesChange={handleDrillOctavesChange}
-          onDrillRepetitionsChange={handleDrillRepetitionsChange}
-          onDrillStyleChange={handleDrillStyleChange}
-          currentDrillStep={drillStepData}
-          drillScore={currentDrillScore}
-        />
+              // Essential props
+              log={() => {}} // Placeholder if Controls no longer needs direct logging
+              sendMessage={sendMessage} // Pass sendMessage for GM2 sounds etc.
+           />
+           <DrillControls 
+              style={{ flex: 1 }} // DrillControls takes 1 part
+              currentMode={currentMode} // Pass mode for style disabling
+              isDrillActive={isDrillActive}
+              setIsDrillActive={handleDrillToggle} // Use the toggle handler
+              drillNumOctaves={drillNumOctaves}
+              drillRepetitions={drillRepetitions}
+              drillStyle={drillStyle}
+              onDrillOctavesChange={handleDrillOctavesChange}
+              onDrillRepetitionsChange={handleDrillRepetitionsChange}
+              onDrillStyleChange={handleDrillStyleChange}
+              currentDrillStep={drillStepData}
+              drillScore={currentDrillScore}
+           />
+        </div>
       </div>
       <MidiMonitorDisplay
-        logMessages={midiLogMessages}
+        logMessages={logMessages}
       />
-
     </div>
   );
 }

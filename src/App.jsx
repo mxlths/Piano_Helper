@@ -41,22 +41,26 @@ function App() {
     // Instantiate MusicLogic
     const [musicLogic] = useState(() => new MusicLogic());
 
-    // Use MIDI hook
+    // Use MIDI hook - REFACTORED
     const {
-        isInitialized,
-        inputs,
-        outputs,
+        isMidiInitialized, // Destructure directly
+        midiInputs,        // Use this name
+        midiOutputs,       // Use this name
         selectedInputId,
         selectedOutputId,
         logMessages,
         selectInput,
         selectOutput,
         sendMessage,
-        lastMidiMessage,
-        latestNoteOn, // For drill trigger
-        activeNotes,
-        log // Destructure log if available, otherwise handle it below
-    } = useMidi();
+        latestNoteOn,      // Kept for drill trigger
+        activeNotes,       // Kept for drill validation
+        log                // Kept if needed elsewhere
+    } = useMidi({ onNoteOn: handleNoteOn, onNoteOff: handleNoteOff }); // Pass callbacks here
+
+    // *** ADDED: Effect to log isMidiInitialized changes ***
+    useEffect(() => {
+      console.log(`[App.jsx useEffect] isMidiInitialized changed to: ${isMidiInitialized}`);
+    }, [isMidiInitialized]);
 
     // Use Metronome hook, passing the sendMessage function from useMidi
     const {
@@ -397,13 +401,13 @@ function App() {
             <div className="main-container">
                 <div className="left-panel">
                     <MidiDeviceSelector
-                        inputs={inputs}
-                        outputs={outputs}
+                        inputs={midiInputs}
+                        outputs={midiOutputs}
                         selectedInputId={selectedInputId}
                         selectedOutputId={selectedOutputId}
                         onSelectInput={selectInput}
                         onSelectOutput={selectOutput}
-                        isInitialized={isInitialized}
+                        isInitialized={isMidiInitialized}
                     />
 
                      {/* Drum Kit Selector */}
@@ -441,13 +445,13 @@ function App() {
                         sendMessage={sendMessage}       // Pass sendMessage function from useMidi
 
                         // --- MIDI Device Props ---
-                        midiInputs={inputs}             // From useMidi
-                        midiOutputs={outputs}           // From useMidi
+                        midiInputs={midiInputs}             // Use renamed variable
+                        midiOutputs={midiOutputs}           // Use renamed variable
                         selectedInputId={selectedInputId} // From useMidi
                         selectedOutputId={selectedOutputId} // From useMidi
                         onSelectInput={selectInput}     // From useMidi
                         onSelectOutput={selectOutput}   // From useMidi
-                        isMidiInitialized={isInitialized} // From useMidi
+                        isMidiInitialized={isMidiInitialized} // Pass the directly destructured variable
                         
                         // --- Metronome Props ---
                         isMetronomePlaying={isMetronomePlaying} // From useMetronome

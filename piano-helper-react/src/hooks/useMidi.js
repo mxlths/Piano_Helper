@@ -11,8 +11,7 @@ const musicLogic = new MusicLogic();
  * Custom Hook to manage WebMIDI API interactions.
  * Accepts callbacks for noteon and noteoff events.
  */
-function useMidi({ onNoteOn, onNoteOff }) { // <-- Accept callbacks as props
-  const [isInitialized, setIsInitialized] = useState(false);
+function useMidi({ onNoteOn, onNoteOff, onInitialized }) { // <-- Accept callbacks as props
   const [inputs, setInputs] = useState([]); // Array of { id, name } for inputs
   const [outputs, setOutputs] = useState([]); // Array of { id, name } for outputs
   const [selectedInputId, setSelectedInputId] = useState(null);
@@ -73,25 +72,37 @@ function useMidi({ onNoteOn, onNoteOff }) { // <-- Accept callbacks as props
     if (!WebMidi.supported) {
       log('Web MIDI API is not supported in this browser.', 'ERROR');
       alert('Web MIDI API is not supported in this browser environment.');
-      setIsInitialized(false); // Mark as not initializable
+      // REMOVED: setIsInitialized(false); // Mark as not initializable
       return; // Stop initialization
     }
 
-    if (!isInitialized) {
-      log('Attempting to enable WebMidi (sysex: true)...');
-      WebMidi.enable((err) => {
-        if (err) {
-          log(`WebMidi.enable() failed: ${err.message}`, 'ERROR');
-          alert(`Failed to initialize MIDI: ${err.message}. Please ensure permissions are granted.`);
-          setIsInitialized(false); // Ensure state reflects failure
-        } else {
-          log('WebMidi enabled successfully.');
-          setIsInitialized(true);
-          updateDeviceLists(); // Update lists immediately after enable
+    log('Attempting to enable WebMidi (sysex: true)...');
+    WebMidi.enable((err) => {
+      if (err) {
+        log(`WebMidi.enable() failed: ${err.message}`, 'ERROR');
+        alert(`Failed to initialize MIDI: ${err.message}. Please ensure permissions are granted.`);
+        // REMOVED: setIsInitialized(false); // Ensure state reflects failure
+      } else {
+        log('WebMidi enabled successfully.');
+        // Fetch devices immediately
+        const currentInputs = WebMidi.inputs.map(i => ({ id: i.id, name: i.name }));
+        const currentOutputs = WebMidi.outputs.map(o => ({ id: o.id, name: o.name }));
+        // Update internal state (might still be useful for the hook itself)
+        setInputs(currentInputs);
+        setOutputs(currentOutputs);
+        log(`Found ${currentInputs.length} inputs, ${currentOutputs.length} outputs.`);
+        
+        // Call the callback with the lists
+        if (typeof onInitialized === 'function') {
+          console.log('[useMidi.js] Value of currentInputs before callback:', currentInputs);
+          console.log('[useMidi.js] Value of currentOutputs before callback:', currentOutputs);          
+          onInitialized(currentInputs, currentOutputs); // Pass lists
+          console.log('[useMidi.js] onInitialized(inputs, outputs) CALLED'); 
         }
-      }, { sysex: true }); // Changed to true
-    }
-  }, [isInitialized, log, updateDeviceLists]); // Depend on isInitialized to prevent re-running if already enabled
+        // REMOVED updateDeviceLists(); // No longer needed here as we pass lists directly
+      }
+    }, { sysex: true }); // Changed to true
+  }, [log, onInitialized]); // Depend on onInitialized to prevent re-running if already enabled
 
   // NEW Effect for cleanup on unmount only
   useEffect(() => {
@@ -109,7 +120,7 @@ function useMidi({ onNoteOn, onNoteOff }) { // <-- Accept callbacks as props
   useEffect(() => {
     // Add check for WebMidi.enabled *inside* the effect
     // This handles cases where WebMidi might be disabled between renders (e.g., by StrictMode)
-    if (isInitialized && WebMidi.enabled) { 
+    if (/* REMOVED: isInitialized && */ WebMidi.enabled) { // Only check if WebMidi is enabled now
         const handleDeviceChange = (e) => {
             let portIsValid = typeof e.port === 'object' && e.port !== null && e.port.id !== undefined;
 
@@ -146,7 +157,7 @@ function useMidi({ onNoteOn, onNoteOff }) { // <-- Accept callbacks as props
         WebMidi.addListener('connected', handleDeviceChange);
         WebMidi.addListener('disconnected', handleDeviceChange);
 
-        // Cleanup listeners on component unmount or when isInitialized changes
+        // Cleanup listeners on component unmount or when onInitialized changes
         return () => {
             log('Removing WebMidi connected/disconnected listeners...');
             // Check if WebMidi is still enabled before trying to remove listeners
@@ -156,11 +167,11 @@ function useMidi({ onNoteOn, onNoteOff }) { // <-- Accept callbacks as props
                 WebMidi.removeListener('disconnected', handleDeviceChange);
             }
         };
-    } else if (isInitialized && !WebMidi.enabled) {
+    } else if (/* REMOVED: isInitialized && */ !WebMidi.enabled) {
         // Log if we intended to add listeners but couldn't because WebMidi was disabled
-        log('Skipping adding listeners because WebMidi is not enabled (isInitialized is true).', 'WARN');
+        log('Skipping adding listeners because WebMidi is not enabled.', 'WARN'); // Removed onInitialized check mention
     }
-  }, [isInitialized, log, updateDeviceLists]); // Re-run if initialization status changes
+  }, [log, updateDeviceLists]); // Re-run if onInitialized status changes
 
   // --- Incoming Message Handler ---
   const handleIncomingMidiMessage = useCallback((event) => {
@@ -236,112 +247,144 @@ function useMidi({ onNoteOn, onNoteOff }) { // <-- Accept callbacks as props
   }, [log, onNoteOn, onNoteOff]); // Add callbacks to dependency array
 
   // --- Device Selection --- 
-  const selectInput = useCallback((id) => {
-    if (id === selectedInputId) return;
+  const selectInput = useCallback((newId) => {
+    log(`selectInput called with: ${newId} (type: ${typeof newId})`); // <-- Log input
+    const idToSet = newId === "" ? null : newId;
+    log(`selectInput: Current state is ${selectedInputId}, trying to set to ${idToSet}`); // <-- Log state comparison
+
+    if (idToSet === selectedInputId) {
+      log('selectInput: New ID is same as current state. Skipping update.');
+      return; 
+    }
 
     // Remove listener from previous input
     if (selectedInputRef.current) {
       log(`Removing listener from previous input: ${selectedInputRef.current.name}`);
-      selectedInputRef.current.removeListener('midimessage', 'all', handleIncomingMidiMessage);
+      selectedInputRef.current.removeListener('midimessage'); // Remove ALL listeners for this event
       selectedInputRef.current = null;
     }
 
-    setSelectedInputId(id);
+    log(`selectInput: Setting state to: ${idToSet}`); // <-- Log before state set
+    setSelectedInputId(idToSet); // Update state with ID or null
 
-    // Add listener to new input
-    if (id) {
-      // Log available inputs right before trying to get by ID
-      const availableInputIds = WebMidi.inputs ? WebMidi.inputs.map(i => i.id) : [];
-      log(`Trying to find input ID: ${id}. Available input IDs: [${availableInputIds.join(', ')}]`);
-      
-      // Simplify: ONLY use .find() to locate the device
-      let inputDevice = null;
-      if (WebMidi.inputs && WebMidi.inputs.length > 0) {
-          log(`Attempting to find input via WebMidi.inputs.find() comparing as strings...`);
-          // Force comparison as strings to avoid potential type issues
-          const targetIdString = String(id);
-          inputDevice = WebMidi.inputs.find(input => String(input.id) === targetIdString);
-      }
-
-      if (inputDevice) {
-        log(`Found device immediately via .find(): ${inputDevice.name} (ID: ${inputDevice.id})`);
-        log(`Adding listener to new input: ${inputDevice.name}`);
-        inputDevice.addListener('midimessage', 'all', handleIncomingMidiMessage);
-        selectedInputRef.current = inputDevice; // Store reference
+    // Add listener to new input if an ID is provided
+    if (idToSet && WebMidi.enabled) {
+      const input = WebMidi.getInputById(idToSet);
+      if (input) {
+        log(`Adding listener to input: ${input.name}`);
+        input.addListener('midimessage', handleIncomingMidiMessage); // Listen on all channels
+        selectedInputRef.current = input; // Store ref to new input
       } else {
-        // If find failed
-        log(`Could not find input device with ID: ${id} using .find().`, 'ERROR');
+        log(`Could not find input with ID: ${idToSet}`, 'ERROR');
       }
-    } else {
-        log("Input deselected.");
     }
-  }, [log, selectedInputId]); // <-- Remove handleIncomingMidiMessage from dependencies
+  }, [log, handleIncomingMidiMessage, selectedInputId]);
 
-  const selectOutput = useCallback((id) => {
-    // Convert the id (which is likely a string from <select>) to a number
-    const numericId = id !== null ? Number(id) : null;
+  const selectOutput = useCallback((newId) => {
+    log(`selectOutput called with: ${newId} (type: ${typeof newId})`); // <-- Log input
+    const idToSet = newId === "" ? null : newId;
+    log(`selectOutput: Current state is ${selectedOutputId}, trying to set to ${idToSet}`); // <-- Log state comparison
 
-    if (numericId === selectedOutputId) return;
+    if (idToSet === selectedOutputId) {
+       log('selectOutput: New ID is same as current state. Skipping update.');
+       return;
+    }
 
-    log(`Selecting output: ${numericId !== null ? numericId : 'None'}`);
-    // Store the ID as a number
-    setSelectedOutputId(numericId);
+    log(`selectOutput: Setting state to: ${idToSet}`); // <-- Log before state set
+    setSelectedOutputId(idToSet); // Update state with ID or null
+    
   }, [log, selectedOutputId]);
 
-  // --- Message Sending ---
-  const sendMessage = useCallback((status, data = []) => { // Revert to separate status and data arguments
-    if (selectedOutputId === null) { // Check for null explicitly
-        log("Cannot send MIDI message: No output selected.", 'WARN');
+  // --- Sending Messages --- 
+  const sendMessage = useCallback((command, data1 = null, data2 = null, channel = 'all') => {
+    if (!selectedOutputId) {
+      // log('Cannot send MIDI message: No output selected.', 'WARN');
+      // Silence this warning as it's logged frequently by metronome/player
+      return;
+    }
+    if (!WebMidi.enabled) {
+        log('Cannot send MIDI message: WebMidi not enabled.', 'WARN');
         return;
     }
-
-    // Attempt to find the output device manually using .find() with explicit Number conversion
-    const outputDevice = WebMidi.outputs.find(output => Number(output.id) === Number(selectedOutputId));
-
-    if (outputDevice) { // Check if the .find() method returned a device object
-      // // Input validation (Optional but good practice)
-      // if (typeof status !== 'number' || status < 0x80 || status > 0xFF) {
-      //     log(`Invalid MIDI status byte: ${status}. Expected integer between 128 (0x80) and 255 (0xFF).`, 'WARN');
-      //     return;
-      // }
-      // if (!Array.isArray(data)) {
-      //     log(`Invalid MIDI data format: Expected array. Received: ${data}`, 'WARN');
-      //     return;
-      // }
-
-      try {
-        // Log using the arguments directly
-        const dataBytesHex = Array.from(data).map(byte => byte.toString(16).padStart(2, '0').toUpperCase()).join(' ');
-        const statusHex = status.toString(16).toUpperCase();
-        log(`MIDI Out: Status=0x${statusHex}, Data=[${dataBytesHex}] to ${outputDevice.name}`);
-
-        // Call send with separate status and data for webmidi.js v2.x
-        outputDevice.send(status, data); 
-
-      } catch (error) {
-          log(`Error sending MIDI message: ${error.message}`, 'ERROR');
-      }
-    } else {
-        // Log error if output device not found by ID
-        log(`Cannot send MIDI message: Output device with ID ${selectedOutputId} not found.`, 'WARN');
+    const output = WebMidi.getOutputById(selectedOutputId);
+    if (!output) {
+      log(`Cannot send MIDI message: Output ${selectedOutputId} not found.`, 'ERROR');
+      return;
     }
-}, [log, selectedOutputId]); // Ensure log and selectedOutputId are stable dependencies
 
-  // Return state and functions needed by components
+    try {
+      let statusByte;
+      const message = [];
+
+      // Determine status byte based on command type
+      if (typeof command === 'number' && command >= 0x80 && command <= 0xEF) {
+          statusByte = command; // Command is already a status byte (e.g., 0x90 for Note On)
+      } else if (typeof command === 'string') {
+          switch (command.toLowerCase()) {
+              case 'noteon': statusByte = 0x90; break;
+              case 'noteoff': statusByte = 0x80; break;
+              case 'controlchange':
+              case 'cc': statusByte = 0xB0; break;
+              case 'programchange':
+              case 'pc': statusByte = 0xC0; break;
+              // Add other command strings as needed (pitchbend, etc.)
+              default: throw new Error(`Unknown MIDI command string: ${command}`);
+          }
+      } else {
+          throw new Error(`Invalid MIDI command type: ${typeof command}`);
+      }
+      
+      // For channel messages, status byte includes channel (0-15)
+      // We will handle sending to specific/all channels later
+      // For now, assume we might modify status byte if channel is specified
+
+      // Build message array
+      // message.push(statusByte); // We'll let webmidi.js handle combining status+channel
+      if (data1 !== null) message.push(data1);
+      if (data2 !== null) message.push(data2);
+
+      // Simple logging
+       let logMsg = `MIDI Out: Cmd=${command}, Ch=${channel}, D1=${data1}, D2=${data2} -> ${output.name}`;
+      // If it's PC or CC, log more descriptive info
+      if (statusByte === 0xC0) logMsg = `MIDI Out: PC Ch ${channel}, Program ${data1} -> ${output.name}`;
+      if (statusByte === 0xB0) logMsg = `MIDI Out: CC Ch ${channel}, Ctrl ${data1}, Val ${data2} -> ${output.name}`;
+      if (statusByte === 0x90) logMsg = `MIDI Out: NoteOn Ch ${channel}, Note ${data1}, Vel ${data2} -> ${output.name}`;
+      if (statusByte === 0x80) logMsg = `MIDI Out: NoteOff Ch ${channel}, Note ${data1}, Vel ${data2} -> ${output.name}`;
+      log(logMsg); 
+
+      // Send using WebMidi.js methods which handle command strings/numbers and channels
+      if (command === 'noteon' || statusByte === 0x90) {
+          output.playNote(data1, channel, { rawVelocity: true, velocity: data2 });
+      } else if (command === 'noteoff' || statusByte === 0x80) {
+          output.stopNote(data1, channel, { rawVelocity: true, velocity: data2 });
+      } else if (command === 'controlchange' || command === 'cc' || statusByte === 0xB0) {
+          output.sendControlChange(data1, data2, channel);
+      } else if (command === 'programchange' || command === 'pc' || statusByte === 0xC0) {
+          // Program change only uses data1
+          output.sendProgramChange(data1, channel); 
+      } else {
+           // Fallback for other commands? Maybe send raw bytes?
+           log(`Sending raw bytes for command ${command}: ${[statusByte, ...message]}`, 'WARN');
+           output.send(statusByte, message, undefined, {channels: channel}); // Assuming send handles array
+      }
+
+    } catch (error) {
+      log(`Error sending MIDI message: ${error.message}`, 'ERROR');
+    }
+  }, [selectedOutputId, log]); // Depend on selected output and log function
+
+  // Return hook state and functions
   return {
-    isInitialized,
-    inputs,
-    outputs,
+    // REMOVED: isInitialized, // Use this name externally
+    inputs,        // Use this name externally
+    outputs,       // Use this name externally
     selectedInputId,
     selectedOutputId,
     logMessages,
-    selectInput,
-    selectOutput,
-    sendMessage,
-    lastMidiMessage, // <-- Expose last message
-    log, // <-- Export the log function
-    // REMOVED latestMidiEvent
-    // REMOVED activeNotes
+    lastMidiMessage,
+    selectInput,   // Use this name externally
+    selectOutput,  // Use this name externally
+    sendMessage,   // Use this name externally
   };
 }
 

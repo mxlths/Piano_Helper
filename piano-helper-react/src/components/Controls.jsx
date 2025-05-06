@@ -1,6 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Note, Scale, Chord } from '@tonaljs/tonal'; // Import for getting degree names and scale intervals
 import Gm2SoundSelector from './Gm2SoundSelector'; // Import the placeholder component
+import {
+  Box,
+  Tabs,
+  Tab,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Button,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
+  Typography,
+  Stack, // For easier layout
+  Divider // For visual separation
+} from '@mui/material';
 
 // Define styles outside the component
 const DRILL_STYLES = [
@@ -17,6 +33,33 @@ const TABS = [
   { id: 'backingTrack', label: 'Backing Track' },
   { id: 'gm2Sounds', label: 'GM2 Sounds' }, // Tab UN-Removed
 ];
+
+// Helper function for Tab Panels (Accessibility)
+function TabPanel(props) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`controls-tabpanel-${index}`}
+      aria-labelledby={`controls-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ pt: 3 }}> {/* Add padding top to panel content */}
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
+
+function a11yProps(index) {
+  return {
+    id: `controls-tab-${index}`,
+    'aria-controls': `controls-tabpanel-${index}`,
+  };
+}
 
 function Controls({ 
   // Mode
@@ -109,7 +152,16 @@ function Controls({
   sendMessage, // ADD sendMessage BACK - Gm2SoundSelector needs it
 }) {
 
-  const [activeTab, setActiveTab] = useState(TABS[0].id); // Default to 'setup' tab
+  // *** Log received midiInputs and midiOutputs props ***
+  console.log('[Controls.jsx] Received midiInputs prop:', midiInputs);
+  console.log('[Controls.jsx] Received midiOutputs prop:', midiOutputs);
+
+  // Use index for MUI Tabs state
+  const [activeTabIndex, setActiveTabIndex] = useState(0); 
+
+  const handleTabChange = (event, newIndex) => {
+    setActiveTabIndex(newIndex);
+  };
 
   // Add useEffect to log prop changes
   useEffect(() => {
@@ -119,10 +171,10 @@ function Controls({
   // Filter MIDI files based on selected genre
   const filteredMidiFiles = useMemo(() => {
     if (!selectedMidiGenre) {
-      return availableMidiFiles; // Show all if no genre selected (or fallback)
+      return availableMidiFiles.filter(file => file.genre === (midiGenres[0] || '')); // Default to first genre if none selected
     }
     return availableMidiFiles.filter(file => file.genre === selectedMidiGenre);
-  }, [availableMidiFiles, selectedMidiGenre]);
+  }, [availableMidiFiles, selectedMidiGenre, midiGenres]);
 
   // console.log('Controls.jsx - Received diatonicTriads prop:', diatonicTriads);
   // console.log('Controls.jsx - Received diatonicSevenths prop:', diatonicSevenths);
@@ -151,534 +203,424 @@ function Controls({
       return 'major';
   };
 
+  // Event Handlers using MUI structure (value comes from event.target.value)
+  const handleMuiSelectChange = (handler) => (event) => {
+     handler(event.target.value);
+  };
+  
+  const handleMuiCheckboxChange = (handler) => (event) => {
+      handler(event.target.checked);
+  };
+
+  // *** Log the received isMidiInitialized prop ***
+  console.log('[Controls.jsx] Received isMidiInitialized prop:', isMidiInitialized);
+
   return (
-    <div style={{ border: '1px solid blue', padding: '10px', marginBottom: '10px' }}>
-      <h2>Controls</h2>
+    <Box sx={{ border: '1px solid', borderColor: 'divider', p: 2, mb: 2, borderRadius: 1 }}> 
+      <Typography variant="h6" gutterBottom>Controls</Typography>
 
-      {/* Tab Navigation (GM2 tab is removed from TABS definition) */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #ccc', marginBottom: '15px' }}>
-        {TABS.map(tab => (
-          <button 
-            key={tab.id} 
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: '8px 12px',
-              border: 'none',
-              borderBottom: activeTab === tab.id ? '3px solid blue' : '3px solid transparent',
-              background: 'none',
-              cursor: 'pointer',
-              fontWeight: activeTab === tab.id ? 'bold' : 'normal'
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Tab Navigation */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        <Tabs value={activeTabIndex} onChange={handleTabChange} aria-label="Control tabs">
+          {TABS.map((tab, index) => (
+            <Tab label={tab.label} key={tab.id} {...a11yProps(index)} />
+          ))}
+        </Tabs>
+      </Box>
 
-      {/* Tab Content - Conditionally Rendered */}
-      <div>
-        {/* === Setup Tab === */}
-        {activeTab === 'setup' && (
-          <div>
+      {/* Tab Content Panels */}
+      {/* === Setup Tab Panel === */}
+      <TabPanel value={activeTabIndex} index={0}>
+        <Stack spacing={2}> {/* Use Stack for vertical spacing */}
             {/* --- Mode Selection --- */}
-             <div style={{ marginBottom: '15px' }}>
-               <label htmlFor="mode-select">Mode: </label>
-               <select id="mode-select" value={currentMode} onChange={(e) => onModeChange(e.target.value)}>
+             <FormControl fullWidth>
+               <InputLabel id="mode-select-label">Mode</InputLabel>
+               <Select
+                 labelId="mode-select-label"
+                 id="mode-select"
+                 value={currentMode}
+                 label="Mode"
+                 onChange={handleMuiSelectChange(onModeChange)}
+               >
                  {modes && modes.map(mode => (
-                   <option key={mode.value} value={mode.value}>{mode.label}</option>
+                   <MenuItem key={mode.value} value={mode.value}>{mode.label}</MenuItem>
                  ))}
-               </select>
-             </div>
-            {/* --- Root & Scale Selection (Always Visible) --- */}
-            <div style={{ marginBottom: '10px' }}>
-               <label>Root: </label>
-               <select value={selectedRootNote} onChange={(e) => onRootChange(e.target.value)}>
-                 {Array.isArray(rootNotes) && rootNotes.map(note => (
-                   <option key={note} value={note}>{note}</option>
-                 ))}
-               </select>
-               <label style={{ marginLeft: '10px' }}>Octave: </label>
-               <select value={selectedOctave} onChange={(e) => onOctaveChange(e.target.value)}>
-                  {Array.isArray(octaves) && octaves.map(oct => (
-                   <option key={oct} value={oct}>{oct}</option>
-                  ))}
-               </select>
-            </div>
-            <div style={{ marginBottom: '10px' }}>
-               <label>Scale: </label>
-               <select value={selectedScaleType} onChange={(e) => onScaleChange(e.target.value)}>
-                  {Array.isArray(scaleTypes) && scaleTypes.map(scale => (
-                    <option key={scale} value={scale}>{scale}</option>
-                  ))}
-                </select>
-            </div>
-            {/* --- Chord Search (Only for 'chord_search' mode) --- */}
-            {currentMode === 'chord_search' && (
-              <div style={{ marginBottom: '15px', borderLeft: '3px solid lightgrey', paddingLeft: '10px' }}>
-                 <label>Chord Type: </label>
-                 <select value={selectedChordType} onChange={(e) => onChordChange(e.target.value)}>
-                    {Array.isArray(chordTypes) && chordTypes.map(chord => (
-                     <option key={chord} value={chord}>{chord}</option>
-                    ))}
-                 </select>
-               </div>
-            )}
-            {/* --- Chord Progression Selection (Only for 'chord_progression' mode) --- */}
-            {currentMode === 'chord_progression' && (
-              <div style={{ marginBottom: '15px', borderLeft: '3px solid lightcoral', paddingLeft: '10px' }}>
-                 <label htmlFor="progression-select">Progression: </label>
-                 <select 
-                    id="progression-select" 
-                    value={selectedProgressionId || ''} 
-                    onChange={(e) => onProgressionChange(e.target.value)}
+               </Select>
+             </FormControl>
+
+            {/* --- Root & Scale Selection --- */}
+            <Stack direction="row" spacing={2}>
+              <FormControl sx={{ minWidth: 120 }}>
+                 <InputLabel id="root-select-label">Root</InputLabel>
+                 <Select
+                   labelId="root-select-label"
+                   value={selectedRootNote}
+                   label="Root"
+                   onChange={handleMuiSelectChange(onRootChange)}
                  >
-                    {/* Add a default/placeholder option? */} 
-                    {/* <option value="">-- Select Progression --</option> */} 
-                    {availableProgressions.map(prog => (
-                     <option key={prog.id} value={prog.id}>{prog.name}</option>
-                    ))}
-                 </select>
-              </div>
-            )}
-            {/* --- Voicing Options (Duplicate for Chord Progression Mode Clarity) --- */}
-            {currentMode === 'chord_progression' && (
-              <div style={{ marginTop: '15px', borderLeft: '3px solid lightseagreen', paddingLeft: '10px' }}>
-                <h4>Progression Voicing Options</h4>
-                {/* Show 7ths Checkbox */}
-                <div style={{ marginBottom: '10px' }}>
-                   <label htmlFor="prog-show-sevenths">
-                     <input 
-                         type="checkbox" 
-                         id="prog-show-sevenths" 
-                         checked={showSevenths} 
-                         onChange={onShowSeventhsChange}
-                     />
-                      Show 7ths
-                   </label>
-                </div>
-                 {/* RH Inversion Select */}
-                <div style={{ marginBottom: '10px' }}>
-                    <label htmlFor="prog-rh-inversion" style={{ marginRight: '5px' }}>RH Inversion:</label>
-                    <select 
-                        id="prog-rh-inversion"
-                        value={rhInversion}
-                        onChange={(e) => onRhInversionChange(e.target.value)}
-                    >
-                        {inversions && inversions.map(inv => (
-                            <option 
-                              key={inv.value} 
-                              value={inv.value}
-                              disabled={inv.value === 3 && !showSevenths} // Disable 3rd inv if not 7ths
-                            >
-                                {inv.label}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                {/* Split Hand Checkbox */}
-                <div style={{ marginBottom: '10px' }}>
-                   <input
-                     type="checkbox"
-                     id="prog-split-hand"
-                     checked={voicingSplitHand}
-                     onChange={onVoicingSplitHandChange}
-                   />
-                   <label htmlFor="prog-split-hand"> Split Hand (LH Root / RH Chord)</label>
-                </div>
-
-                {/* LH Octave Offset (Only if Split Hand active) */}
-                {voicingSplitHand && (
-                  <div style={{ marginLeft: '20px', marginBottom: '10px' }}>
-                    <label style={{ marginRight: '10px' }}>LH Octave:</label>
-                    <label style={{ marginRight: '15px' }}>
-                      <input
-                        type="radio"
-                        name="prog-lhOffset"
-                        value={-12} // 1 Octave Down
-                        checked={voicingLhOctaveOffset === -12}
-                        onChange={(e) => onVoicingLhOffsetChange(e.target.value)}
-                      /> -1 Oct
-                    </label>
-                    <label>
-                      <input
-                        type="radio"
-                        name="prog-lhOffset"
-                        value={-24} // 2 Octaves Down
-                        checked={voicingLhOctaveOffset === -24}
-                        onChange={(e) => onVoicingLhOffsetChange(e.target.value)}
-                      /> -2 Oct
-                    </label>
-                  </div>
-                )}
-
-                {/* RH Rootless Checkbox (Only if Split Hand active) */}
-                {voicingSplitHand && (
-                  <div style={{ marginLeft: '20px', marginBottom: '10px' }}>
-                    <label htmlFor="prog-rh-rootless">
-                      <input
-                        type="checkbox"
-                        id="prog-rh-rootless"
-                        checked={voicingRhRootless}
-                        onChange={onVoicingRhRootlessChange}
-                        disabled={!voicingSplitHand} // Disable if split hand off
-                      />
-                        Rootless RH Chord
-                    </label>
-                  </div>
-                )}
-
-                {/* Shell Voicing Checkbox */}
-                <div style={{ marginBottom: '10px' }}>
-                   <label htmlFor="prog-shell-voicing">
-                     <input
-                       type="checkbox"
-                       id="prog-shell-voicing"
-                       checked={voicingUseShell}
-                       onChange={onVoicingUseShellChange}
-                     />
-                      Shell Voicing (R, 3, 7)
-                   </label>
-                 </div>
-                 {/* Add Upper Octave Root Checkbox */}
-                 <div style={{ marginBottom: '10px' }}>
-                   <label htmlFor="prog-add-octave-root">
-                     <input
-                       type="checkbox"
-                       id="prog-add-octave-root"
-                       checked={voicingAddOctaveRoot}
-                       onChange={onVoicingAddOctaveRootChange}
-                     />
-                      Add Upper Octave Root
-                   </label>
-                 </div>
-              </div>
-            )}
-            {/* --- Diatonic Chord Controls (Only for 'diatonic_chords' mode) --- */}
-            {currentMode === 'diatonic_chords' && (
-              <div style={{ marginTop: '10px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
-                <h4>Diatonic Chords</h4>
-                <div style={{ marginBottom: '10px', display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                  {(showSevenths ? diatonicSevenths : diatonicTriads).map((fullChordName, index) => {
-                      if (!fullChordName) return null;
-                      
-                      const chordData = Chord.get(fullChordName);
-                      const quality = chordData.quality;
-                      const roman = getRomanNumeral(index);
-                      
-                      let qualityStyle = {};
-                      if (quality === 'Minor') qualityStyle.fontWeight = 'normal';
-                      if (quality === 'Diminished') qualityStyle.opacity = 0.7;
-                      
-                      const buttonText = `${quality === 'Minor' ? roman.toLowerCase() : roman}${quality === 'Diminished' ? '°' : ''}`;
-                      const isActive = index === selectedDiatonicDegree;
-
-                      return (
-                          <button 
-                              key={index} 
-                              onClick={() => onDiatonicDegreeChange(index)}
-                              style={{
-                                  ...qualityStyle,
-                                  border: isActive ? '2px solid blue' : '1px solid grey',
-                                  padding: '5px 8px',
-                              }}
-                              title={fullChordName}
-                          >
-                              {buttonText} ({fullChordName})
-                          </button>
-                      );
-                   })}
-                </div>
-                <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap'}}>
-                    <div>
-                        <input 
-                            type="checkbox" 
-                            id="show-sevenths" 
-                            checked={showSevenths} 
-                            onChange={onShowSeventhsChange}
-                        />
-                        <label htmlFor="show-sevenths"> Show 7ths</label>
-                    </div>
-                     <div>
-                        <input 
-                            type="checkbox" 
-                            id="split-hand" 
-                            checked={splitHandVoicing} 
-                            onChange={onSplitHandVoicingChange}
-                        />
-                        <label htmlFor="split-hand"> Split Hand Voicing</label>
-                    </div>
-                    {/* New Control for Split Interval */} 
-                    {splitHandVoicing && (
-                      <div style={{ marginLeft: '10px' }}>
-                        <label style={{ marginRight: '5px' }}>Interval:</label>
-                        <label style={{ marginRight: '10px' }}>
-                          <input 
-                            type="radio" 
-                            name="splitInterval" 
-                            value="12" 
-                            checked={splitHandInterval === 12} 
-                            onChange={onSplitHandIntervalChange} 
-                          /> 1 Octave
-                        </label>
-                        <label>
-                          <input 
-                            type="radio" 
-                            name="splitInterval" 
-                            value="24" 
-                            checked={splitHandInterval === 24} 
-                            onChange={onSplitHandIntervalChange} 
-                          /> 2 Octaves
-                        </label>
-                      </div>
-                    )}
-                    <div>
-                        <label htmlFor="rh-inversion" style={{ marginRight: '5px' }}>RH Inversion:</label>
-                        <select 
-                            id="rh-inversion"
-                            value={rhInversion}
-                            onChange={(e) => onRhInversionChange(e.target.value)}
-                        >
-                            {inversions && inversions.map(inv => (
-                                <option 
-                                  key={inv.value} 
-                                  value={inv.value}
-                                  disabled={inv.value === 3 && !showSevenths} // Disable 3rd inv if not 7ths
-                                >
-                                    {inv.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-                {/* Rootless RH Checkbox (Added for Diatonic Mode) */} 
-                {splitHandVoicing && (
-                   <div style={{ marginTop: '10px', marginLeft: '15px' }}>
-                     <label htmlFor="diatonic-rh-rootless">
-                       <input
-                         type="checkbox"
-                         id="diatonic-rh-rootless"
-                         checked={voicingRhRootless} // Use the shared state
-                         onChange={onVoicingRhRootlessChange} // Use the shared handler
-                         disabled={!splitHandVoicing} // Disable if split hand off
-                       />
-                        Rootless RH Chord
-                     </label>
-                   </div>
-                )}
-                {/* Shell Voicing Checkbox (Diatonic) */}
-                <div style={{ marginTop: '10px', marginLeft: '15px' }}>
-                   <label htmlFor="diatonic-shell-voicing">
-                       <input
-                           type="checkbox"
-                           id="diatonic-shell-voicing"
-                           checked={voicingUseShell}
-                           onChange={onVoicingUseShellChange}
-                       />
-                       Shell Voicing (R, 3, 7)
-                   </label>
-                </div>
-                 {/* Add Upper Octave Root Checkbox (Diatonic) */}
-                <div style={{ marginTop: '10px', marginLeft: '15px' }}>
-                   <label htmlFor="diatonic-add-octave-root">
-                       <input
-                           type="checkbox"
-                           id="diatonic-add-octave-root"
-                           checked={voicingAddOctaveRoot}
-                           onChange={onVoicingAddOctaveRootChange}
-                       />
-                       Add Upper Octave Root
-                   </label>
-                </div>
-              </div>
-            )}
-             {/* --- MIDI Device Selection --- */}
-            <div style={{ borderTop: '1px solid #eee', paddingTop: '10px', marginTop: '15px'}}>
-                <h4>MIDI Devices</h4>
-                <div style={{ marginBottom: '10px' }}>
-                   <label htmlFor="midi-input">MIDI Input: </label>
-                   <select 
-                     id="midi-input" 
-                     value={selectedInputId || ''} // Controlled component
-                     onChange={handleInputChange} 
-                     disabled={!isMidiInitialized || midiInputs.length === 0}
-                   >
-                     <option value="">-- Select Input --</option>
-                     {midiInputs.map(input => (
-                       <option key={input.id} value={input.id}>
-                         {input.name}
-                       </option>
-                     ))}
-                   </select>
-                </div>
-                <div>
-                   <label htmlFor="midi-output">MIDI Output: </label>
-                   <select 
-                     id="midi-output" 
-                     value={selectedOutputId || ''} // Controlled component
-                     onChange={handleOutputChange} 
-                     disabled={!isMidiInitialized || midiOutputs.length === 0}
-                   >
-                     <option value="">-- Select Output --</option>
-                     {midiOutputs.map(output => (
-                       <option key={output.id} value={output.id}>
-                         {output.name}
-                       </option>
-                     ))}
-                   </select>
-                </div>
-                {!isMidiInitialized && <p><small>Initializing MIDI...</small></p>}
-                {isMidiInitialized && midiInputs.length === 0 && midiOutputs.length === 0 && 
-                  <p><small>MIDI Initialized, but no devices found.</small></p>
-                }
-            </div>
-          </div>
-        )}
-
-        {/* === Metronome Tab === */}
-        {activeTab === 'metronome' && (
-           <div style={{ border: 'none', padding: '0' }}> {/* Remove border/padding from original flex item */}
-              <h4>Metronome</h4>
-              <div>
-                 <button onClick={onToggleMetronome} disabled={!selectedOutputId}> 
-                  {isMetronomePlaying ? 'Stop' : 'Start'}
-                 </button>
-                 <label htmlFor="metronome-bpm" style={{ marginLeft: '10px' }}> BPM: </label>
-                  <input 
-                      type="number" 
-                      id="metronome-bpm"
-                      value={metronomeBpm}
-                      onChange={(e) => onChangeMetronomeTempo(e.target.value)}
-                      min="30" 
-                      max="300" 
-                      step="1"
-                      style={{ width: '60px'}}
-                      disabled={!selectedOutputId}
-                  />
-                  <label htmlFor="metronome-sound" style={{ marginLeft: '10px' }}> Sound: </label>
-                  <select
-                      id="metronome-sound"
-                      value={metronomeSoundNote}
-                      onChange={(e) => onChangeMetronomeSound(e.target.value)}
-                      disabled={!selectedOutputId}
-                  >
-                      {Object.entries(metronomeSounds).map(([name, note]) => (
-                          <option key={note} value={note}>
-                              {name} ({note})
-                          </option>
-                      ))}
-                  </select>
-                  {/* Time Signature Select */}
-                  <label htmlFor="metronome-timesig" style={{ marginLeft: '10px' }}> Time Sig: </label>
-                   <select
-                      id="metronome-timesig"
-                      value={metronomeTimeSignature}
-                      onChange={(e) => onChangeMetronomeTimeSignature(e.target.value)}
-                      disabled={!selectedOutputId}
-                  >
-                      <option value="none">None</option>
-                      <option value="3/4">3/4</option>
-                      <option value="4/4">4/4</option>
-                  </select>
-              </div>
-              {!selectedOutputId && isMidiInitialized && 
-                  <p><small>Select a MIDI Output device (in Setup tab) to enable Metronome.</small></p>}
-           </div>
-        )}
-
-        {/* === Backing Track Tab === */}
-        {activeTab === 'backingTrack' && (
-           <div style={{ border: 'none', padding: '0' }}> {/* Remove border/padding from original flex item */} 
-              <h4>MIDI Backing Track</h4>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}> {/* Add margin bottom */} 
-                {/* Genre Selector */}
-                <label htmlFor="midi-genre-select">Select Genre:</label>
-                <select 
-                  id="midi-genre-select"
-                  value={selectedMidiGenre || ''}
-                  onChange={(e) => onMidiGenreChange(e.target.value)}
-                >
-                   {/* <option value="">-- All Genres --</option>  Could add this option */}
-                   {midiGenres.map(genre => (
-                     <option key={genre} value={genre}>{genre}</option>
+                   {Array.isArray(rootNotes) && rootNotes.map(note => (
+                     <MenuItem key={note} value={note}>{note}</MenuItem>
                    ))}
-                </select>
-
-                {/* Track Selector (Uses filtered files) */}
-                <label htmlFor="midi-file-select" style={{ marginLeft: '15px' }}>Select Track:</label> {/* Add left margin */} 
-                <select 
-                  id="midi-file-select"
-                  onChange={(e) => {
-                     const selectedUrl = e.target.value;
-                     if (selectedUrl) {
-                         onLoadMidiFile(selectedUrl); // Call load with the selected URL
-                     } else {
-                         // Handle case where "-- Choose --" is selected (e.g., clear loaded file?)
-                         // Currently, onLoadMidiFile likely handles empty string, but be explicit if needed.
-                     }
-                  }}
-                  value={availableMidiFiles.find(f => f.name === loadedMidiFileName)?.url || ""} // Reflect currently loaded file URL (use availableMidiFiles to find the URL)
-                  disabled={playbackState === 'playing' || playbackState === 'paused' || !selectedMidiGenre} // Also disable if no genre is selected
-                >
-                  <option value="">-- Choose a MIDI file --</option>
-                  {filteredMidiFiles.map(file => (
-                    <option key={file.url} value={file.url}>{file.name}</option>
+                 </Select>
+               </FormControl>
+               <FormControl sx={{ minWidth: 100 }}>
+                 <InputLabel id="octave-select-label">Octave</InputLabel>
+                 <Select
+                    labelId="octave-select-label"
+                    value={selectedOctave}
+                    label="Octave"
+                    onChange={handleMuiSelectChange(onOctaveChange)}
+                 >
+                   {Array.isArray(octaves) && octaves.map(oct => (
+                     <MenuItem key={oct} value={oct}>{oct}</MenuItem>
+                   ))}
+                 </Select>
+               </FormControl>
+            </Stack>
+            <FormControl fullWidth>
+               <InputLabel id="scale-select-label">Scale</InputLabel>
+               <Select
+                    labelId="scale-select-label"
+                    value={selectedScaleType}
+                    label="Scale"
+                    onChange={handleMuiSelectChange(onScaleChange)}
+               >
+                  {Array.isArray(scaleTypes) && scaleTypes.map(scale => (
+                    <MenuItem key={scale} value={scale}>{scale}</MenuItem>
                   ))}
-                </select>
-              </div>
+                </Select>
+            </FormControl>
 
-              {/* Playback Controls */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <button 
-                  onClick={onPlayMidiFile} 
-                  disabled={!loadedMidiFileName || playbackState === 'playing'} // Disable if no file loaded or already playing
+            {/* --- Chord Search (Conditional) --- */}
+            {currentMode === 'chord_search' && (
+              <Box sx={{ pl: 2, borderLeft: 3, borderColor: 'grey.300' }}>
+                <FormControl fullWidth>
+                   <InputLabel id="chord-type-label">Chord Type</InputLabel>
+                   <Select
+                      labelId="chord-type-label"
+                      value={selectedChordType}
+                      label="Chord Type"
+                      onChange={handleMuiSelectChange(onChordChange)}
+                   >
+                      {Array.isArray(chordTypes) && chordTypes.map(chord => (
+                       <MenuItem key={chord} value={chord}>{chord}</MenuItem>
+                      ))}
+                   </Select>
+                 </FormControl>
+               </Box>
+            )}
+
+            {/* --- Chord Progression Selection (Conditional) --- */}
+            {currentMode === 'chord_progression' && (
+              <Box sx={{ pl: 2, borderLeft: 3, borderColor: 'secondary.light' }}>
+                 <FormControl fullWidth>
+                    <InputLabel id="progression-select-label">Progression</InputLabel>
+                    <Select 
+                      labelId="progression-select-label"
+                      id="progression-select" 
+                      value={selectedProgressionId || ''} 
+                      label="Progression"
+                      onChange={handleMuiSelectChange(onProgressionChange)}
+                    >
+                      {/* Consider adding a "None" or default option */}
+                      {/* <MenuItem value=""><em>-- Select Progression --</em></MenuItem> */}
+                      {availableProgressions.map(prog => (
+                       <MenuItem key={prog.id} value={prog.id}>{prog.name}</MenuItem>
+                      ))}
+                    </Select>
+                 </FormControl>
+              </Box>
+            )}
+
+            {/* --- Voicing Options (Duplicate for Chord Progression Mode) --- */}
+            {currentMode === 'chord_progression' && (
+              <Box sx={{ mt: 2, pl: 2, borderLeft: 3, borderColor: 'primary.light' }}>
+                <Typography variant="subtitle1" gutterBottom>Progression Voicing</Typography>
+                <FormGroup>
+                  <FormControlLabel 
+                    control={<Checkbox checked={showSevenths} onChange={handleMuiCheckboxChange(onShowSeventhsChange)} />} 
+                    label="Show 7ths" 
+                  />
+                   <FormControlLabel 
+                    control={<Checkbox checked={voicingSplitHand} onChange={handleMuiCheckboxChange(onVoicingSplitHandChange)} />} 
+                    label="Split Hand (LH Bass)" 
+                  />
+                  {voicingSplitHand && ( // Only show offset if split hand is active
+                     <FormControl sx={{ mt: 1, minWidth: 120 }}>
+                       <InputLabel id="lh-offset-label">LH Offset</InputLabel>
+                       <Select
+                         labelId="lh-offset-label"
+                         value={voicingLhOctaveOffset}
+                         label="LH Offset"
+                         onChange={handleMuiSelectChange(onVoicingLhOffsetChange)}
+                         size="small" // Make it smaller
+                       >
+                         {[-2, -1, 0].map(offset => (
+                           <MenuItem key={offset} value={offset}>{offset === 0 ? 'None' : `${offset} Octave${offset === -1 ? '' : 's'}`}</MenuItem>
+                         ))}
+                       </Select>
+                     </FormControl>
+                  )}
+                   <FormControlLabel 
+                    control={<Checkbox checked={voicingRhRootless} onChange={handleMuiCheckboxChange(onVoicingRhRootlessChange)} />} 
+                    label="RH Rootless" 
+                  />
+                   <FormControlLabel 
+                    control={<Checkbox checked={voicingUseShell} onChange={handleMuiCheckboxChange(onVoicingUseShellChange)} />} 
+                    label="Use Shell Voicing (3/7)" 
+                  />
+                   <FormControlLabel 
+                    control={<Checkbox checked={voicingAddOctaveRoot} onChange={handleMuiCheckboxChange(onVoicingAddOctaveRootChange)} />} 
+                    label="Add Octave Root (RH)" 
+                  />
+                    {/* RH Inversion Dropdown */}
+                  <FormControl sx={{ mt: 1, minWidth: 150 }}>
+                     <InputLabel id="rh-inversion-prog-label">RH Inversion</InputLabel>
+                     <Select
+                        labelId="rh-inversion-prog-label"
+                        value={rhInversion}
+                        label="RH Inversion"
+                        onChange={handleMuiSelectChange(onRhInversionChange)}
+                        size="small"
+                     >
+                       {inversions && inversions.map((inv, index) => (
+                         <MenuItem key={index} value={index}>{inv.label}</MenuItem>
+                       ))}
+                     </Select>
+                  </FormControl>
+                </FormGroup>
+              </Box>
+            )}
+            
+            {/* --- Diatonic Chord Mode Options (Conditional) --- */}
+            {currentMode === 'diatonic_chords' && (
+               <Box sx={{ mt: 2, pl: 2, borderLeft: 3, borderColor: 'success.light' }}>
+                <Typography variant="subtitle1" gutterBottom>Diatonic Options</Typography>
+                 {/* Diatonic Chord Buttons */}
+                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                    {(showSevenths ? diatonicSevenths : diatonicTriads).map((chordName, index) => (
+                        <Button
+                            key={index}
+                            variant={selectedDiatonicDegree === (index + 1) ? 'contained' : 'outlined'}
+                            // Add color based on quality? - Example, needs refinement
+                            // color={getChordQuality(chordName) === 'minor' ? 'secondary' : 'primary'} 
+                            onClick={() => onDiatonicDegreeChange(index + 1)}
+                            size="small"
+                            sx={{ textTransform: 'none' }} // Prevent uppercase
+                        >
+                            {getRomanNumeral(index)} ({chordName || 'N/A'})
+                        </Button>
+                    ))}
+                 </Box>
+                 {/* Diatonic Voicing Options */}
+                <FormGroup>
+                   <FormControlLabel 
+                      control={<Checkbox checked={showSevenths} onChange={handleMuiCheckboxChange(onShowSeventhsChange)} />} 
+                      label="Show 7ths" 
+                    />
+                   <FormControlLabel 
+                      control={<Checkbox checked={splitHandVoicing} onChange={handleMuiCheckboxChange(onSplitHandVoicingChange)} />} 
+                      label="Split Hand (LH Root + RH Chord)" 
+                    />
+                     {/* RH Inversion Dropdown */}
+                    <FormControl sx={{ mt: 1, minWidth: 150 }}>
+                       <InputLabel id="rh-inversion-diatonic-label">RH Inversion</InputLabel>
+                       <Select
+                          labelId="rh-inversion-diatonic-label"
+                          value={rhInversion}
+                          label="RH Inversion"
+                          onChange={handleMuiSelectChange(onRhInversionChange)}
+                          size="small"
+                       >
+                         {inversions && inversions.map((inv, index) => (
+                           <MenuItem key={index} value={index}>{inv.label}</MenuItem>
+                         ))}
+                       </Select>
+                    </FormControl>
+                     {/* Split Hand Interval (If we keep this specific one) */}
+                    {splitHandVoicing && (
+                      <FormControl sx={{ mt: 1, minWidth: 150 }}>
+                         <InputLabel id="split-interval-label">Split Interval</InputLabel>
+                         <Select
+                            labelId="split-interval-label"
+                            value={splitHandInterval}
+                            label="Split Interval"
+                            onChange={handleMuiSelectChange(onSplitHandIntervalChange)}
+                            size="small"
+                         >
+                           {[-2, -1, 0, 1, 2].map(interval => ( // Example intervals
+                              <MenuItem key={interval} value={interval}>
+                                 {interval === 0 ? 'Unison' : interval > 0 ? `+${interval} Oct` : `${interval} Oct`}
+                              </MenuItem>
+                            ))}
+                         </Select>
+                      </FormControl>
+                    )}
+                 </FormGroup>
+              </Box>
+            )}
+
+            <Divider sx={{ my: 2 }} /> {/* Separator */}
+
+            {/* --- MIDI Device Selection --- */}
+            <Typography variant="subtitle1" gutterBottom>MIDI Devices</Typography>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}> {/* Responsive row/column */}
+                <FormControl fullWidth>
+                    <InputLabel id="midi-input-label">MIDI Input</InputLabel>
+                    <Select
+                        labelId="midi-input-label"
+                        value={selectedInputId || ''}
+                        label="MIDI Input"
+                        onChange={(e) => {
+                            console.log('[Controls.jsx] MIDI Input onChange fired! Value:', e.target.value);
+                            onSelectInput(e.target.value);
+                        }}
+                        disabled={!isMidiInitialized}
+                    >
+                        <MenuItem value=""><em>-- Select Input --</em></MenuItem>
+                        {midiInputs.map(input => (
+                            <MenuItem key={input.id} value={input.id}>{input.name}</MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+                <FormControl fullWidth>
+                    <InputLabel id="midi-output-label">MIDI Output</InputLabel>
+                    <Select
+                        labelId="midi-output-label"
+                        value={selectedOutputId || ''}
+                        label="MIDI Output"
+                        onChange={(e) => {
+                            console.log('[Controls.jsx] MIDI Output onChange fired! Value:', e.target.value);
+                            onSelectOutput(e.target.value);
+                        }}
+                        disabled={!isMidiInitialized}
+                    >
+                         <MenuItem value=""><em>-- Select Output --</em></MenuItem>
+                        {midiOutputs.map(output => (
+                            <MenuItem key={output.id} value={output.id}>{output.name}</MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+            </Stack>
+            {!isMidiInitialized && <Typography variant="caption" color="text.secondary">Initializing MIDI...</Typography>}
+        </Stack>
+      </TabPanel>
+
+      {/* === Metronome Tab Panel === */}
+      <TabPanel value={activeTabIndex} index={1}>
+         <Stack spacing={2}>
+            <Typography variant="subtitle1" gutterBottom>Metronome Settings</Typography>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Button 
+                variant="contained" 
+                onClick={onToggleMetronome}
+              >
+                {isMetronomePlaying ? 'Stop' : 'Start'} Metronome
+              </Button>
+              <FormControl sx={{ minWidth: 100 }}>
+                <InputLabel id="metronome-bpm-label">BPM</InputLabel>
+                <Select
+                  labelId="metronome-bpm-label"
+                  value={metronomeBpm}
+                  label="BPM"
+                  onChange={handleMuiSelectChange(onChangeMetronomeTempo)}
+                  size="small"
                 >
-                  Play
-                </button>
-                <button 
-                  onClick={onPauseMidiFile} 
-                  disabled={playbackState !== 'playing'} // Disable if not playing
-                >
-                  Pause
-                </button>
-                <button 
-                  onClick={onStopMidiFile} 
-                  disabled={playbackState === 'stopped'} // Disable if already stopped
-                >
-                  Stop
-                </button>
+                 {/* Generate BPM options */}
+                 {Array.from({ length: (220 - 40) / 4 + 1 }, (_, i) => 40 + i * 4).map(bpm => (
+                    <MenuItem key={bpm} value={bpm}>{bpm}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+             <FormControl sx={{ minWidth: 120 }}>
+                <InputLabel id="metronome-ts-label">Time Sig</InputLabel>
+                <Select
+                  labelId="metronome-ts-label"
+                  value={metronomeTimeSignature}
+                  label="Time Sig"
+                  onChange={handleMuiSelectChange(onChangeMetronomeTimeSignature)}
+                   size="small"
+               >
+                  {['4/4', '3/4', '2/4', '6/8'].map(ts => ( // Example time signatures
+                    <MenuItem key={ts} value={ts}>{ts}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+               <FormControl sx={{ minWidth: 150 }}>
+                <InputLabel id="metronome-sound-label">Sound</InputLabel>
+                <Select
+                  labelId="metronome-sound-label"
+                  value={metronomeSoundNote}
+                  label="Sound"
+                  onChange={handleMuiSelectChange(onChangeMetronomeSound)}
+                   size="small"
+               >
+                  {Array.isArray(metronomeSounds) && metronomeSounds.map(sound => ( 
+                    <MenuItem key={sound.note} value={sound.note}>{sound.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Stack>
+         </Stack>
+      </TabPanel>
 
-                {loadedMidiFileName && (
-                  <span style={{ marginLeft: '15px', fontStyle: 'italic' }}>
-                    Loaded: {loadedMidiFileName}
-                  </span>
-                )}
-                 {playbackState !== 'stopped' && (
-                   <span style={{ marginLeft: '15px', fontWeight: 'bold' }}>
-                      ({playbackState})
-                   </span>
-                 )}
-              </div>
-               {!selectedOutputId && isMidiInitialized && 
-                   <p style={{marginTop: '5px'}}><small>Select a MIDI Output device (in Setup tab) to enable playback.</small></p>}
-           </div>
-        )}
+      {/* === Backing Track Tab Panel === */}
+      <TabPanel value={activeTabIndex} index={2}>
+         <Stack spacing={2}>
+            <Typography variant="subtitle1" gutterBottom>Backing Track Player</Typography>
+             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+               {/* Genre Selection */}
+               <FormControl fullWidth>
+                  <InputLabel id="midi-genre-select-label">Genre</InputLabel>
+                  <Select
+                     labelId="midi-genre-select-label"
+                     id="midi-genre-select"
+                     value={selectedMidiGenre || ''}
+                     label="Genre"
+                     onChange={handleMuiSelectChange(onMidiGenreChange)}
+                  >
+                     {/* <MenuItem value=""><em>-- Select Genre --</em></MenuItem> */}
+                     {midiGenres.map(genre => (
+                       <MenuItem key={genre} value={genre}>{genre}</MenuItem>
+                     ))}
+                  </Select>
+               </FormControl>
+                {/* File Selection (depends on Genre) */}
+               <FormControl fullWidth disabled={!selectedMidiGenre}>
+                  <InputLabel id="midi-file-select-label">Track</InputLabel>
+                  <Select
+                     labelId="midi-file-select-label"
+                     id="midi-file-select"
+                     value={loadedMidiFileName ? filteredMidiFiles.find(f=>f.name === loadedMidiFileName)?.url : ''} // Select based on URL mapped from loaded name
+                     label="Track"
+                     onChange={(e) => onLoadMidiFile(e.target.value)} // Pass URL directly
+                  >
+                      <MenuItem value=""><em>-- Select Track --</em></MenuItem>
+                     {filteredMidiFiles.map(file => (
+                       <MenuItem key={file.url} value={file.url}>{file.name}</MenuItem>
+                     ))}
+                  </Select>
+               </FormControl>
+            </Stack>
+            {/* Playback Controls */}
+            <Stack direction="row" spacing={1} alignItems="center">
+               <Button variant="contained" onClick={onPlayMidiFile} disabled={playbackState === 'playing' || !loadedMidiFileName}>Play</Button>
+               <Button variant="outlined" onClick={onPauseMidiFile} disabled={playbackState !== 'playing'}>Pause</Button>
+               <Button variant="outlined" color="secondary" onClick={onStopMidiFile} disabled={playbackState === 'stopped'}>Stop</Button>
+               {loadedMidiFileName && <Typography variant="body2" sx={{ ml: 2 }}>Loaded: {loadedMidiFileName}</Typography>}
+            </Stack>
+              <Typography variant="caption">Status: {playbackState}</Typography>
+          </Stack>
+      </TabPanel>
 
-        {/* === BLOCK INTENTIONALLY LEFT EMPTY - GM2 REMOVED === */}
+      {/* === GM2 Sounds Tab Panel === */}
+      <TabPanel value={activeTabIndex} index={3}>
+          <Typography variant="subtitle1" gutterBottom>GM2 Sound Selection</Typography>
+           {/* Ensure sendMessage is passed */}
+           <Gm2SoundSelector sendMessage={sendMessage} /> 
+      </TabPanel>
 
-        {/* === Add GM2 Selector Rendering */}
-        {activeTab === 'gm2Sounds' && (
-            <Gm2SoundSelector
-                selectedOutputId={selectedOutputId} // Pass the output ID
-                sendMessage={sendMessage}            // Pass the MIDI send function
-                log={log}                          // Pass the log function
-            />
-        )}
-
-        {/* === Other potential tabs REMOVED / commented out === */}
-        {/* {activeTab === 'diatonic' && ( ... )} */}
-      </div>
-
-    </div> // End of main Controls div
+    </Box>
   );
 }
 
