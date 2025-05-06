@@ -289,7 +289,7 @@ function useMidi({ onNoteOn, onNoteOff }) { // <-- Accept callbacks as props
   }, [log, selectedOutputId]);
 
   // --- Message Sending ---
-  const sendMessage = useCallback((status, data = []) => {
+  const sendMessage = useCallback((status, data = []) => { // Revert to separate status and data arguments
     if (selectedOutputId === null) { // Check for null explicitly
         log("Cannot send MIDI message: No output selected.", 'WARN');
         return;
@@ -299,22 +299,33 @@ function useMidi({ onNoteOn, onNoteOff }) { // <-- Accept callbacks as props
     const outputDevice = WebMidi.outputs.find(output => Number(output.id) === Number(selectedOutputId));
 
     if (outputDevice) { // Check if the .find() method returned a device object
+      // // Input validation (Optional but good practice)
+      // if (typeof status !== 'number' || status < 0x80 || status > 0xFF) {
+      //     log(`Invalid MIDI status byte: ${status}. Expected integer between 128 (0x80) and 255 (0xFF).`, 'WARN');
+      //     return;
+      // }
+      // if (!Array.isArray(data)) {
+      //     log(`Invalid MIDI data format: Expected array. Received: ${data}`, 'WARN');
+      //     return;
+      // }
+
       try {
-        // Log MIDI Out data in a more readable format
+        // Log using the arguments directly
         const dataBytesHex = Array.from(data).map(byte => byte.toString(16).padStart(2, '0').toUpperCase()).join(' ');
         const statusHex = status.toString(16).toUpperCase();
-        log(`MIDI Out: Status=0x${statusHex} Data=[${dataBytesHex}] to ${outputDevice.name}`); 
-        outputDevice.send(status, data); // Pass status and data separately
+        log(`MIDI Out: Status=0x${statusHex}, Data=[${dataBytesHex}] to ${outputDevice.name}`);
+
+        // Call send with separate status and data for webmidi.js v2.x
+        outputDevice.send(status, data); 
+
       } catch (error) {
-        log(`Error sending MIDI message: ${error.message}`, 'ERROR');
+          log(`Error sending MIDI message: ${error.message}`, 'ERROR');
       }
     } else {
-        // Log if .find() failed
-        const availableOutputIDs = WebMidi.outputs ? WebMidi.outputs.map(o => `ID: ${o.id} Name: ${o.name}`) : ['None available'];
-        log(`[sendMessage] .find() failed to locate output device ID: ${selectedOutputId}`, 'WARN');
-        log(`[sendMessage] Available outputs: [${availableOutputIDs.join(', ')}]`, 'WARN');
+        // Log error if output device not found by ID
+        log(`Cannot send MIDI message: Output device with ID ${selectedOutputId} not found.`, 'WARN');
     }
-  }, [log, selectedOutputId]);
+}, [log, selectedOutputId]); // Ensure log and selectedOutputId are stable dependencies
 
   // Return state and functions needed by components
   return {
@@ -328,6 +339,7 @@ function useMidi({ onNoteOn, onNoteOff }) { // <-- Accept callbacks as props
     selectOutput,
     sendMessage,
     lastMidiMessage, // <-- Expose last message
+    log, // <-- Export the log function
     // REMOVED latestMidiEvent
     // REMOVED activeNotes
   };

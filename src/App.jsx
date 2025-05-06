@@ -14,6 +14,7 @@ import DrillDisplay from './components/DrillDisplay';
 import { Scales } from './constants/Scales';
 import { GM2_DRUM_KITS, DEFAULT_DRUM_KIT_NAME } from './utils/midiConstants'; // Import drum kits
 import { selectDrumKit } from './utils/midiPlaybackUtils'; // Import selection function
+import Gm2SoundSelector from './components/Gm2SoundSelector'; // Import directly
 
 import './App.css';
 
@@ -56,17 +57,6 @@ function App() {
         activeNotes,
         log // Destructure log if available, otherwise handle it below
     } = useMidi();
-
-    // Create a stable log function reference if not provided by useMidi
-    const stableLog = useCallback(logMessages => {
-        // Check if the log function is provided by useMidi hook
-        if (typeof log === 'function') {
-            log(logMessages);
-        } else {
-            // Fallback or alternative logging if necessary
-            console.log("Log (App):", logMessages); 
-        }
-    }, [log]); // Depend on log from useMidi
 
     // Use Metronome hook, passing the sendMessage function from useMidi
     const {
@@ -274,36 +264,42 @@ function App() {
             // Only send if we have a valid status byte
             // Skip potentially problematic messages if needed (e.g., SysEx if not enabled)
             if (statusByte >= 0xF0 && statusByte <= 0xF7) { 
-                 stableLog('Skipping System Common/Realtime message from MIDI file.', 'DEBUG');
+                 // Use log directly
+                 if (typeof log === 'function') log('Skipping System Common/Realtime message from MIDI file.', 'DEBUG');
                  return;
              }
+            // Revert to sending status and data separately for sendMessage v2
             sendMessage(statusByte, dataBytes);
             // Optional: More detailed logging
             // const dataBytesHex = dataBytes.map(b => b.toString(16).padStart(2, '0')).join(' ');
             // stableLog(`MIDI Playback -> Status: 0x${statusByte.toString(16)}, Data: [${dataBytesHex}]`, 'DEBUG');
         } else {
-            stableLog('MIDI Playback -> Received event without status byte:', 'WARN', event);
+            // Use log directly
+            if (typeof log === 'function') log('MIDI Playback -> Received event without status byte:', 'WARN', event);
         }
 
-    }, [sendMessage, stableLog]);
+    }, [sendMessage, log]);
 
     // Initialize or get the player instance
     const getPlayer = useCallback(() => {
         if (!midiPlayerRef.current) {
-            stableLog('Initializing MIDI Player...');
+            // Use log directly
+            if (typeof log === 'function') log('Initializing MIDI Player...');
             midiPlayerRef.current = new Player(handleMidiPlayerEvent);
             // Add other listeners if needed (e.g., 'endOfFile')
             midiPlayerRef.current.on('endOfFile', () => {
-                stableLog('MIDI file playback finished.');
+                // Use log directly
+                if (typeof log === 'function') log('MIDI file playback finished.');
                 setIsMidiPlaying(false);
             });
         }
         return midiPlayerRef.current;
-    }, [handleMidiPlayerEvent, stableLog]);
+    }, [handleMidiPlayerEvent, log]);
 
     const loadAndPlayFile = useCallback(async (filePath) => {
         if (!selectedOutputId) {
-            stableLog("Cannot play MIDI file: No output selected.", 'WARN');
+            // Use log directly
+            if (typeof log === 'function') log("Cannot play MIDI file: No output selected.", 'WARN');
             return;
         }
 
@@ -311,7 +307,8 @@ function App() {
         if (player.isPlaying()) {
             player.stop();
             setIsMidiPlaying(false);
-            stableLog('Stopped previous MIDI playback.');
+            // Use log directly
+            if (typeof log === 'function') log('Stopped previous MIDI playback.');
             // Send All Notes Off / Reset Controllers?
              const allNotesOffCC = 123;
              const resetControllersCC = 121;
@@ -322,33 +319,38 @@ function App() {
         }
 
         try {
-            stableLog(`Fetching MIDI file: ${filePath}...`);
+            // Use log directly
+            if (typeof log === 'function') log(`Fetching MIDI file: ${filePath}...`);
             const response = await fetch(filePath);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const arrayBuffer = await response.arrayBuffer();
-            stableLog('MIDI file fetched, loading into player...');
+            // Use log directly
+            if (typeof log === 'function') log('MIDI file fetched, loading into player...');
 
             // Select the drum kit *before* loading/playing
-            selectDrumKit(selectedDrumKitName, sendMessage, stableLog);
+            selectDrumKit(selectedDrumKitName, sendMessage, log);
 
             player.loadArrayBuffer(arrayBuffer);
-            stableLog('MIDI file loaded. Starting playback...');
+            // Use log directly
+            if (typeof log === 'function') log('MIDI file loaded. Starting playback...');
             player.play();
             setIsMidiPlaying(true);
 
         } catch (error) {
-            stableLog(`Error loading or playing MIDI file ${filePath}: ${error.message}`, 'ERROR');
+            // Use log directly
+            if (typeof log === 'function') log(`Error loading or playing MIDI file ${filePath}: ${error.message}`, 'ERROR');
             setIsMidiPlaying(false);
         }
-    }, [getPlayer, selectedOutputId, sendMessage, selectedDrumKitName, stableLog]); // Added stableLog dependency
+    }, [getPlayer, selectedOutputId, sendMessage, selectedDrumKitName, log]); // Added log dependency
 
     const stopMidiFile = useCallback(() => {
         const player = midiPlayerRef.current;
         if (player && player.isPlaying()) {
             player.stop();
-            stableLog('MIDI playback stopped by user.');
+            // Use log directly
+            if (typeof log === 'function') log('MIDI playback stopped by user.');
             setIsMidiPlaying(false);
              // Send All Notes Off / Reset Controllers
              const allNotesOffCC = 123;
@@ -358,7 +360,7 @@ function App() {
                  // sendMessage(0xB0 | ch, [resetControllersCC, 0]); // Optional
              }
         }
-    }, [sendMessage, stableLog]); // Added stableLog
+    }, [sendMessage, log]); // Added log
 
     // Cleanup player on unmount or output change
     useEffect(() => {
@@ -366,7 +368,8 @@ function App() {
         // Return cleanup function
         return () => {
             if (player) {
-                stableLog('Cleaning up MIDI player...');
+                // Use log directly
+                if (typeof log === 'function') log('Cleaning up MIDI player...');
                 if (player.isPlaying()) {
                     player.stop();
                 }
@@ -376,12 +379,13 @@ function App() {
                 midiPlayerRef.current = null; // Help garbage collection
             }
         };
-    }, []); // Run only on mount/unmount
+    }, [log]); // Run only on mount/unmount
 
      // Stop playback if output device is deselected
      useEffect(() => {
          if (!selectedOutputId && midiPlayerRef.current && midiPlayerRef.current.isPlaying()) {
-             stableLog('MIDI Output deselected, stopping playback.', 'WARN');
+             // Use log directly
+             if (typeof log === 'function') log('MIDI Output deselected, stopping playback.', 'WARN');
              stopMidiFile();
          }
      }, [selectedOutputId, stopMidiFile]);
@@ -420,42 +424,67 @@ function App() {
                     </div>
                     {/* End Drum Kit Selector */}
 
-                    {/* <Controls
-                        selectedRoot={selectedRoot}
-                        selectedScale={selectedScale}
-                        highlightMode={highlightMode}
-                        onRootChange={handleRootChange}
-                        onScaleChange={handleScaleChange}
-                        onHighlightModeChange={handleHighlightModeChange}
-                        isMetronomePlaying={isMetronomePlaying}
-                        startMetronome={startMetronome}
-                        stopMetronome={stopMetronome}
-                        bpm={bpm}
-                        onBpmChange={setBpm}
-                        timeSignature={timeSignature}
-                        onTimeSignatureChange={setTimeSignature}
-                        selectedSoundNote={selectedSoundNote}
-                        onSoundNoteChange={setSelectedSoundNote}
-                        metronomeSounds={metronomeSounds}
-                    /> */}
+                    {/* Render Gm2SoundSelector directly here */}
+                    <div className="control-group">
+                      <h4>GM2 Sound Selection (Direct Render)</h4>
+                      <Gm2SoundSelector
+                        selectedOutputId={selectedOutputId} // Pass directly from useMidi
+                        sendMessage={sendMessage}         // Pass directly from useMidi
+                        log={log}                       // Pass directly from useMidi
+                      />
+                    </div>
+
+                    {/* Passing essential props ONLY for now */}
+                    <Controls
+                        // --- Essential Functions ---
+                        log={log}                   // Pass log function from useMidi
+                        sendMessage={sendMessage}       // Pass sendMessage function from useMidi
+
+                        // --- MIDI Device Props ---
+                        midiInputs={inputs}             // From useMidi
+                        midiOutputs={outputs}           // From useMidi
+                        selectedInputId={selectedInputId} // From useMidi
+                        selectedOutputId={selectedOutputId} // From useMidi
+                        onSelectInput={selectInput}     // From useMidi
+                        onSelectOutput={selectOutput}   // From useMidi
+                        isMidiInitialized={isInitialized} // From useMidi
+                        
+                        // --- Metronome Props ---
+                        isMetronomePlaying={isMetronomePlaying} // From useMetronome
+                        metronomeBpm={bpm}                  // From useMetronome
+                        metronomeSoundNote={selectedSoundNote} // From useMetronome
+                        metronomeSounds={metronomeSounds}     // From useMetronome
+                        metronomeTimeSignature={timeSignature} // From useMetronome
+                        onToggleMetronome={isMetronomePlaying ? stopMetronome : startMetronome} // From useMetronome
+                        onChangeMetronomeTempo={setBpm}           // From useMetronome
+                        onChangeMetronomeSound={setSelectedSoundNote} // From useMetronome
+                        onChangeMetronomeTimeSignature={setTimeSignature} // From useMetronome
+
+                        // --- MIDI Player Props ---
+                        playbackState={isMidiPlaying ? 'playing' : 'stopped'} // Derived from App state
+                        // loadedMidiFileName={...} // Simplified for now
+                        availableMidiFiles={[ // Example list
+                            { name: 'Example Swing Beat', url: '/midi-files/JBB_4-4_NmlMedSwg_T076_FullKit_108.mid' },
+                        ]}
+                        onLoadMidiFile={loadAndPlayFile} // From App handler
+                        onPlayMidiFile={() => midiPlayerRef.current?.play()} // Direct player call
+                        onPauseMidiFile={() => midiPlayerRef.current?.pause()} // Direct player call
+                        onStopMidiFile={stopMidiFile} // From App handler
+
+                        // --- Basic Setup Props (Example) ---
+                        // rootNotes={musicLogic.getRootNotes()} 
+                        // scaleTypes={musicLogic.getScaleTypes()} 
+                        // selectedRootNote={selectedRoot} 
+                        // selectedScaleType={selectedScale} 
+                        // onRootChange={handleRootChange} 
+                        // onScaleChange={handleScaleChange} 
+
+                        // --- TODO: Add back other props as needed ---
+                        // Modes, Diatonic, Chord Search, Progressions, Voicing etc.
+                    />
 
                     <h4>[TESTING HEADING AFTER CONTROLS]</h4>
 
-                    {/* MIDI Playback Controls - THIS SECTION */}
-                     <div className="control-group midi-playback-controls">
-                         <h4>Backing Track</h4>
-                         <button 
-                            onClick={() => loadAndPlayFile('/midi-files/JBB_4-4_NmlMedSwg_T076_FullKit_108.mid')}
-                            disabled={!selectedOutputId || isMidiPlaying}
-                         >
-                             Play Example Track
-                         </button>
-                         <button onClick={stopMidiFile} disabled={!isMidiPlaying}>
-                             Stop Track
-                         </button>
-                         <span>{isMidiPlaying ? 'Playing...' : 'Stopped'}</span>
-                      </div>
-                      {/* End MIDI Playback Controls */}
                     <DrillSettings settings={drillSettings} onChange={handleDrillSettingsChange} onStartDrill={startDrill} />
                      <button onClick={() => setDisplayMode('Piano')} disabled={displayMode === 'Piano'}>Show Piano</button>
                      <button onClick={() => setDisplayMode('ChordSearch')} disabled={displayMode === 'ChordSearch'}>Show Chord Search</button>

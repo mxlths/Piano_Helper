@@ -15,7 +15,7 @@ const TABS = [
   { id: 'setup', label: 'Setup' },
   { id: 'metronome', label: 'Metronome' },
   { id: 'backingTrack', label: 'Backing Track' },
-  { id: 'gm2Sounds', label: 'GM2 Sounds' }, // NEW: Add the GM2 Sounds tab
+  { id: 'gm2Sounds', label: 'GM2 Sounds' }, // Tab UN-Removed
 ];
 
 function Controls({ 
@@ -50,7 +50,6 @@ function Controls({
   onShowSeventhsChange,
   onSplitHandVoicingChange,
   onRhInversionChange,
-  // Add new props for split interval
   splitHandInterval,
   onSplitHandIntervalChange,
 
@@ -62,6 +61,7 @@ function Controls({
   onSelectInput, 
   onSelectOutput,
   isMidiInitialized,
+  
   // Metronome Props
   isMetronomePlaying,
   metronomeBpm,
@@ -72,8 +72,9 @@ function Controls({
   onChangeMetronomeTempo,
   onChangeMetronomeSound,
   onChangeMetronomeTimeSignature,
+  
   // --- MIDI Player Props ---
-  playbackState, // 'stopped', 'playing', 'paused'
+  playbackState,
   loadedMidiFileName,
   availableMidiFiles = [],
   onLoadMidiFile,
@@ -81,8 +82,7 @@ function Controls({
   onPauseMidiFile,
   onStopMidiFile,
   style, // Keep style prop passed from App
-  // Add sendMidiMessage prop
-  sendMidiMessage,
+  
   // Chord Progression Props <-- NEW
   availableProgressions = [],
   selectedProgressionId,
@@ -90,16 +90,19 @@ function Controls({
 
   // Voicing Props <-- NEW
   voicingSplitHand,
-  voicingLhOctaveOffset, // -12 or -24
+  voicingLhOctaveOffset,
   voicingRhRootless,
   onVoicingSplitHandChange,
   onVoicingLhOffsetChange,
   onVoicingRhRootlessChange,
-  // NEW Voicing Props
   voicingUseShell,
   voicingAddOctaveRoot,
   onVoicingUseShellChange,
   onVoicingAddOctaveRootChange,
+
+  // Essential props (log might still be needed elsewhere in Controls)
+  log, 
+  sendMessage, // ADD sendMessage BACK - Gm2SoundSelector needs it
 }) {
 
   const [activeTab, setActiveTab] = useState(TABS[0].id); // Default to 'setup' tab
@@ -140,7 +143,7 @@ function Controls({
     <div style={{ border: '1px solid blue', padding: '10px', marginBottom: '10px' }}>
       <h2>Controls</h2>
 
-      {/* Tab Navigation */}
+      {/* Tab Navigation (GM2 tab is removed from TABS definition) */}
       <div style={{ display: 'flex', borderBottom: '1px solid #ccc', marginBottom: '15px' }}>
         {TABS.map(tab => (
           <button 
@@ -162,7 +165,7 @@ function Controls({
 
       {/* Tab Content - Conditionally Rendered */}
       <div>
-        {/* === Setup Tab === */} 
+        {/* === Setup Tab === */}
         {activeTab === 'setup' && (
           <div>
             {/* --- Mode Selection --- */}
@@ -519,7 +522,7 @@ function Controls({
           </div>
         )}
 
-        {/* === Metronome Tab === */} 
+        {/* === Metronome Tab === */}
         {activeTab === 'metronome' && (
            <div style={{ border: 'none', padding: '0' }}> {/* Remove border/padding from original flex item */}
               <h4>Metronome</h4>
@@ -570,7 +573,7 @@ function Controls({
            </div>
         )}
 
-        {/* === Backing Track Tab === */} 
+        {/* === Backing Track Tab === */}
         {activeTab === 'backingTrack' && (
            <div style={{ border: 'none', padding: '0' }}> {/* Remove border/padding from original flex item */} 
               <h4>MIDI Backing Track</h4>
@@ -623,84 +626,19 @@ function Controls({
            </div>
         )}
 
-        {/* NEW: === GM2 Sounds Tab === */}
+        {/* === BLOCK INTENTIONALLY LEFT EMPTY - GM2 REMOVED === */}
+
+        {/* === Add GM2 Selector Rendering */}
         {activeTab === 'gm2Sounds' && (
-          <div>
-            <h4>GM2 Sound Selection</h4>
-            <Gm2SoundSelector 
-                // Pass necessary props later, e.g., MIDI output, sending function
-                selectedOutputId={selectedOutputId} // Pass the selected output ID
-                sendMidiMessage={sendMidiMessage} // Pass the sending function
+            <Gm2SoundSelector
+                selectedOutputId={selectedOutputId} // Pass the output ID
+                sendMessage={sendMessage}            // Pass the MIDI send function
+                log={log}                          // Pass the log function
             />
-            {/* Placeholder for GM2 controls */}
-            {/* <p>GM2 Sound selection controls will go here.</p> */}
-          </div>
         )}
 
-        {/* --- Diatonic Chords Tab Content --- */}
-        {activeTab === 'diatonic' && (
-          <div>
-            {/* ... existing diatonic controls ... */}
-
-            {/* --- Voicing Options (Also relevant for Chord Progression Mode) --- */}
-            {(currentMode === 'diatonic_chords' || currentMode === 'chord_progression') && (
-               <div style={{ marginTop: '20px', borderTop: '1px solid #ccc', paddingTop: '15px' }}>
-                 <h4>Voicing Options</h4>
-                 {/* Split Hand Checkbox */}
-                 <div>
-                   <label>
-                     <input
-                       type="checkbox"
-                       checked={voicingSplitHand}
-                       onChange={onVoicingSplitHandChange}
-                     />
-                     Split Hand (LH Root / RH Chord)
-                   </label>
-                 </div>
-
-                 {/* LH Octave Offset (Only if Split Hand active) */}
-                 {voicingSplitHand && (
-                   <div style={{ marginLeft: '20px', marginBottom: '10px' }}>
-                     <label style={{ marginRight: '10px' }}>LH Octave:</label>
-                     <label style={{ marginRight: '15px' }}>
-                       <input
-                         type="radio"
-                         name="lhOffset"
-                         value={-12} // 1 Octave Down
-                         checked={voicingLhOctaveOffset === -12}
-                         onChange={(e) => onVoicingLhOffsetChange(e.target.value)}
-                       /> -1 Oct
-                     </label>
-                     <label>
-                       <input
-                         type="radio"
-                         name="lhOffset"
-                         value={-24} // 2 Octaves Down
-                         checked={voicingLhOctaveOffset === -24}
-                         onChange={(e) => onVoicingLhOffsetChange(e.target.value)}
-                       /> -2 Oct
-                     </label>
-                   </div>
-                 )}
-
-                 {/* RH Rootless Checkbox (Only if Split Hand active) */}
-                 {voicingSplitHand && (
-                   <div style={{ marginLeft: '20px' }}>
-                     <label>
-                       <input
-                         type="checkbox"
-                         checked={voicingRhRootless}
-                         onChange={onVoicingRhRootlessChange}
-                         disabled={!voicingSplitHand} // Disable if split hand off
-                       />
-                       Rootless RH Chord
-                     </label>
-                   </div>
-                 )}
-               </div>
-            )}
-          </div>
-        )}
+        {/* === Other potential tabs REMOVED / commented out === */}
+        {/* {activeTab === 'diatonic' && ( ... )} */}
       </div>
 
     </div> // End of main Controls div

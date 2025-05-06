@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 // Import the sound data and helper functions
-import { getAvailableBanks, getProgramsForBank } from '../gm2SoundsData';
+import { getAvailableBanks, getProgramsForBank, gm2MelodicSounds, gm2DrumKits } from '../gm2SoundsData';
 
 function Gm2SoundSelector(props) {
-  // Props will include: selectedOutputId, sendMidiMessage
-  const { selectedOutputId, sendMidiMessage } = props;
+  // Props will include: selectedOutputId, sendMessage, log
+  const { selectedOutputId, sendMessage, log } = props;
 
   const [selectedChannel, setSelectedChannel] = useState(1);
   const [availableBanks, setAvailableBanks] = useState([]);
@@ -46,26 +46,73 @@ function Gm2SoundSelector(props) {
     }
   }, [selectedBankLsb, selectedChannel]); // Also depend on channel
 
-  const handleSend = () => {
-    if (!selectedOutputId || !sendMidiMessage) {
-      console.warn("GM2 Send: No MIDI Output selected or send function missing.");
+  // Wrap handleSend in useCallback to ensure it uses the latest props/state
+  const handleSend = useCallback(() => {
+    // Determine which sound map to use based on the channel
+    const isDrumChannel = selectedChannel === 10;
+    const soundMap = isDrumChannel ? gm2DrumKits : gm2MelodicSounds;
+
+    // Get the selected program details from the appropriate map
+    let selectedSoundDetails = null;
+    // Find the bank data using the LSB (Note: Drum kits often use LSB 0)
+    const bankData = soundMap[selectedBankLsb];
+    
+    if (bankData && bankData.programs) {
+        // Find the program using the PC value (which is 0-indexed in our data)
+        selectedSoundDetails = bankData.programs.find(p => p.pc === selectedProgram);
+    }
+
+    if (!selectedSoundDetails) {
+      // Safeguard: Check if log is a function before calling
+      if (typeof log === 'function') {
+        log(`Could not find sound details for Channel: ${selectedChannel}, Bank LSB: ${selectedBankLsb}, Program PC: ${selectedProgram}. Cannot send.`, 'WARN');
+      } else {
+        console.warn('[Gm2SoundSelector] Log function not available when checking sound details.'); // Fallback log
+      }
       return;
     }
+
+    // Extract values from the found sound details
+    // bankMSB is generally 0 for GM2 standard sounds/drums
+    const bankMSB = isDrumChannel ? (selectedSoundDetails.msb ?? 0) : (selectedSoundDetails.msb ?? 0); // Default MSB to 0 if not specified
+    const bankLSB = selectedBankLsb; // We already have the LSB from state
+    const programChange = selectedProgram; // We already have the PC (0-indexed) from state
     
-    console.log(`Sending GM2 Sound Select - Channel: ${selectedChannel}, Bank LSB: ${selectedBankLsb}, Program: ${selectedProgram}`);
+    const midiChannel = selectedChannel - 1; // Convert 1-based channel to 0-based
 
-    const midiChannel = selectedChannel - 1; // MIDI channels are 0-15
+    // MIDI Status Bytes (B0 for CC, C0 for Program Change)
+    const STATUS_CC = 0xB0;
+    const STATUS_PC = 0xC0;
 
-    // 1. Send Bank Select MSB (CC 0) - Value 121 for GM2 Melodic, 120 for GM2 Drums
-    const bankMsbValue = selectedChannel === 10 ? 120 : 121;
-    sendMidiMessage([0xB0 + midiChannel, 0, bankMsbValue]); 
+    // MIDI Control Change Numbers for Bank Select
+    const BANK_SELECT_MSB_CC = 0;
+    const BANK_SELECT_LSB_CC = 32;
 
-    // 2. Send Bank Select LSB (CC 32)
-    sendMidiMessage([0xB0 + midiChannel, 32, selectedBankLsb]);
+    // Ensure bankMSB, bankLSB, and programChange are valid numbers
+    // Also check midiChannel just in case
+    if (isNaN(bankMSB) || isNaN(bankLSB) || isNaN(programChange) || isNaN(midiChannel) || midiChannel < 0 || midiChannel > 15) {
+      // Safeguard: Check if log is a function before calling
+      if (typeof log === 'function') {
+        log(`Invalid sound selection parameters: MSB=${bankMSB}, LSB=${bankLSB}, PC=${programChange}, Channel=${selectedChannel}`, 'ERROR');
+      } else {
+         console.error('[Gm2SoundSelector] Log function not available for invalid parameters error.'); // Fallback log
+      }
+      return;
+    }
 
-    // 3. Send Program Change
-    sendMidiMessage([0xC0 + midiChannel, selectedProgram]);
-  };
+    // Send MIDI messages using separate status and data arguments (for webmidi.js v2.x)
+    // Remove Safeguards and use 'sendMessage'
+    if (typeof log === 'function') log(`Sending Bank Select MSB: Status=0x${(STATUS_CC + midiChannel).toString(16)}, Data=[${BANK_SELECT_MSB_CC}, ${bankMSB}]`, 'DEBUG');
+    sendMessage(STATUS_CC + midiChannel, [BANK_SELECT_MSB_CC, bankMSB]);
+    
+    if (typeof log === 'function') log(`Sending Bank Select LSB: Status=0x${(STATUS_CC + midiChannel).toString(16)}, Data=[${BANK_SELECT_LSB_CC}, ${bankLSB}]`, 'DEBUG');
+    sendMessage(STATUS_CC + midiChannel, [BANK_SELECT_LSB_CC, bankLSB]);
+
+    if (typeof log === 'function') log(`Sending Program Change: Status=0x${(STATUS_PC + midiChannel).toString(16)}, Data=[${programChange}]`, 'DEBUG');
+    sendMessage(STATUS_PC + midiChannel, [programChange]);
+
+    if (typeof log === 'function') log(`GM2 sound selected: Bank MSB=${bankMSB}, LSB=${bankLSB}, PC=${programChange} on channel ${selectedChannel}`);
+  }, [selectedChannel, selectedBankLsb, selectedProgram, selectedOutputId, log, sendMessage, gm2DrumKits, gm2MelodicSounds]); // Add dependencies
 
   const handleBankChange = (e) => {
     setSelectedBankLsb(parseInt(e.target.value, 10));

@@ -869,7 +869,7 @@ function App() {
           onSelectInput={selectMidiInput}
           onSelectOutput={selectMidiOutput}
           isMidiInitialized={isMidiInitialized}
-          sendMidiMessage={sendMidiMessage}
+          sendMessage={sendMidiMessage}
 
           // Progression Mode Props <-- NEW
           availableProgressions={availableProgressions}

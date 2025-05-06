@@ -7,3 +7,4 @@ You can always ask to see the midi-monitor example code.
 Include explicit instructions for actions you wish for me to perform in the program when we are testing code.
 Read all code COMPLETELY to ensure you don't miss vital information.
 Always update [CurrentState.md](mdc:piano-helper-react/CurrentState.md) when we make changes and additions to the functionality and logic of the program to ensure it is always up to date.
+We are using WebMIDI Version 2.5.3 - ensure code is compatible with this version of WebMIDI. Search the web if necessary.

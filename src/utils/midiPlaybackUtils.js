@@ -32,14 +32,14 @@ export const selectDrumKit = (kitName, sendMessage, log = console.log) => {
   const BANK_SELECT_LSB_CC = 32;
 
   try {
-    // 1. Send Bank Select MSB
-    sendMessage(STATUS_CC, [BANK_SELECT_MSB_CC, kit.msb]);
+    // 1. Send Bank Select MSB (Status 0xB9 for channel 10)
+    sendMessage(STATUS_CC + 9, [BANK_SELECT_MSB_CC, kit.msb]); // Pass status and data separately
 
-    // 2. Send Bank Select LSB
-    sendMessage(STATUS_CC, [BANK_SELECT_LSB_CC, kit.lsb]);
+    // 2. Send Bank Select LSB (Status 0xB9 for channel 10)
+    sendMessage(STATUS_CC + 9, [BANK_SELECT_LSB_CC, kit.lsb]); // Pass status and data separately
 
-    // 3. Send Program Change (PC is 1-indexed in map, subtract 1 for 0-based MIDI message data)
-    sendMessage(STATUS_PC, [kit.pc - 1]);
+    // 3. Send Program Change (Status 0xC9 for channel 10)
+    sendMessage(STATUS_PC + 9, [kit.pc - 1]); // Pass status and data separately
 
     log(`Drum kit ${kitName} selection messages sent.`);
 
