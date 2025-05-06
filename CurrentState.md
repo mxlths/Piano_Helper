@@ -1,4 +1,4 @@
-# Piano Helper React - Current State Summary (Pre-Chord Progression Mode)
+# Piano Helper React - Current State Summary
 
 This document summarizes the architecture and functionality of the Piano Helper React application based on a review of the `src` directory.
 
@@ -28,7 +28,7 @@ This document summarizes the architecture and functionality of the Piano Helper 
     *   **NEW (Voicing):** Added voicing controls (Split Hand, LH Offset, RH Rootless) under the Diatonic Chords tab, visible for `diatonic_chords` and `chord_progression` modes.
     *   **NEW (Voicing Clarity):** Duplicated the voicing controls (Show 7ths, RH Inversion, Split Hand, etc.) to appear directly in the Setup tab when `chord_progression` mode is active.
 *   **`src/components/DrillControls.jsx`:** Displays controls specific to the drill mode (start/stop, options like octaves/style/repetitions) and shows the current drill status (step, score, expected item label).
-*   **`src/components/PianoKeyboard.jsx`:** A canvas-based virtual keyboard. It visually represents keys, highlights notes based on the current mode/selection (`notesToHighlight`), shows actively played MIDI notes (`playedNotes`), and indicates the notes expected in the current drill step (`expectedNotes`).
+*   **`src/components/PianoKeyboard.jsx`:** A canvas-based virtual keyboard displaying **5 octaves** (from C2). It visually represents keys, highlights notes based on the current mode/selection (`notesToHighlight`), shows actively played MIDI notes (`playedNotes`), and indicates the notes expected in the current drill step (`expectedNotes`).
 *   **`src/components/InfoDisplay.jsx`:** Shows textual information about the currently selected scale, searched chord, or diatonic chord (name, notes, formula, MIDI values).
 *   **`src/components/MidiMonitorDisplay.jsx`:** Displays a log of incoming MIDI messages (provided by `useMidi.js`).
 *   **`src/components/Gm2SoundSelector.jsx`:** Component for selecting GM2 sounds, interacting with `sendMidiMessage`.
@@ -40,6 +40,7 @@ The application currently supports the following modes (`currentMode` state in `
 *   **`scale_display`:** Select a root/octave/scale type. The `InfoDisplay` shows scale details, and `PianoKeyboard` highlights the scale notes. Drills generate steps for playing scale notes.
 *   **`chord_search`:** Select a root/octave/chord type. `InfoDisplay` shows chord details, and `PianoKeyboard` highlights the chord notes. Drills generate steps for playing the selected chord across all roots/octaves.
 *   **`diatonic_chords`:** Select a root/octave/scale. `Controls.jsx` shows buttons for each diatonic degree. Selecting a degree shows its details in `InfoDisplay` and highlights notes on `PianoKeyboard`. Options exist for showing 7ths, RH inversion, and split-hand voicing. Drills generate steps for playing the diatonic chords sequentially.
+*   **`chord_progression`:** Select a key/scale and a chord progression. `InfoDisplay` shows transposed progression details. `PianoKeyboard` highlights all notes in the currently selected voicing for the entire progression. Drills generate steps for playing the voiced chords sequentially.
 
 ## 5. Drill Functionality
 
@@ -47,7 +48,9 @@ The application currently supports the following modes (`currentMode` state in `
 *   Generates a sequence of steps based on `currentMode` and `drillOptions` (octaves, repetitions, style).
 *   Listens to `playedNoteEvent` (MIDI note-on from `App.jsx`).
 *   Validates played notes against the `expectedMidiNotes` for the current step.
-*   Handles both single-note steps (scales) and multi-note chord steps (chord search, diatonic chords). Chord steps require all expected notes to be played (currently order-independent within the chord) before advancing.
+*   Handles both single-note steps (scales) and multi-note chord steps (chord search, diatonic chords, chord progressions). Chord steps require all expected notes to be played (currently order-independent within the chord) before advancing.
+*   **Automatic Stop:** The drill automatically stops (`isDrillActive` is set to `false`) if any relevant setting is changed while the drill is active. This includes changes to mode, root, scale, octave, chord type (in Chord Search), selected progression, any voicing option, or any drill option (octaves, repetitions, style).
+*   The `repetitions` option correctly applies to Chord Progression drills.
 *   Updates `currentScore`.
 *   Provides `currentDrillStep` data (including `expectedMidiNotes` and a `stepLabel`) back to `App.jsx` for display via `DrillControls` and `PianoKeyboard`.
 
@@ -56,15 +59,14 @@ The application currently supports the following modes (`currentMode` state in `
 *   `react`
 *   `@tonaljs/tonal`
 *   `webmidi`
-
-This structure provides a solid foundation. The plan for the Chord Progression mode involves adding a new mode value, managing progression data, adding UI controls, and extending `useDrill.js` to generate and validate progression-based drill sequences. 
+*   `midi-player-js`
 
 ### 4. Core Logic & Calculations (`App.jsx` `useMemo` hooks)
 *   **Diatonic Chords:** Calculates the names (`diatonicTriads`, `diatonicSevenths`) and MIDI notes (`calculatedDiatonicChordNotes`) for all diatonic chords in the selected key/scale, applying RH inversion and split-hand voicing options.
 *   **Progression Chords:**
     *   Loads progressions from `src/data/progressions.json`.
     *   `calculatedProgressionChords`: Takes the selected Roman numeral progression, transposes it to the current key/scale using `@tonaljs/roman-numeral` and `@tonaljs/scale`.
-    *   **NEW (Voicing):** Applies selected voicing options (Show 7ths, RH Inversion, Split Hand, LH Offset, RH Rootless) during the calculation of the final `midiNotes` for each chord in the progression.
+    *   **NEW (Voicing):** Applies selected voicing options (Show 7ths, RH Inversion, Split Hand, LH Offset, RH Rootless, Shell Voicing, Add Octave Root) during the calculation of the final `midiNotes` for each chord in the progression.
 *   `notesToHighlight`: Determines which MIDI notes should be highlighted on the `PianoKeyboard` based on the current mode and selections (scale notes, single chord notes, all notes in the current diatonic degree, or all unique notes in the current progression voicing).
 
 ### 5. Current Functionality Summary
@@ -75,17 +77,21 @@ This structure provides a solid foundation. The plan for the Chord Progression m
     *   User can select from predefined progressions.
     *   The progression is transposed to the current key and displayed in `InfoDisplay` (Roman, Name, Notes, MIDI).
     *   All unique notes across the *current voicing* of the progression are highlighted on the keyboard.
-    *   **NEW (Voicing):** Voicing options (Show 7ths, RH Inversion, Split Hand, LH Offset, RH Rootless) can be configured and are applied to the calculated progression chords.
+    *   **NEW (Voicing):** Voicing options (Show 7ths, RH Inversion, Split Hand, LH Offset, RH Rootless, Shell Voicing, Add Octave Root) can be configured and are applied to the calculated progression chords.
 *   **Drills:**
     *   Drills are available for Scale Display, Chord Search, Diatonic Chords, and Chord Progression modes.
-    *   Drill options (octaves, repetitions, style) can be configured.
+    *   Drill options (octaves, repetitions, style) can be configured (Octaves/Style not applicable to Progressions, Repetitions apply to all).
     *   The drill sequence is generated based on the mode and options.
     *   Basic note/chord checking logic compares MIDI input to the expected notes for the current step.
     *   The drill advances upon correct completion of a step (single note or full chord based on *current voicing*).
+    *   **Automatic Stop:** Drills automatically stop if relevant settings are changed mid-drill.
     *   Basic scoring (correct/incorrect count) is implemented.
 *   **MIDI:** Input/Output selection, MIDI event monitoring.
 *   **Metronome:** Basic metronome functionality.
-*   **MIDI Player:** Basic MIDI file loading and playback.
+*   **MIDI Player / Backing Tracks:**
+    *   MIDI files organized by genre in `/public/midi-files/`.
+    *   User can select a genre, then a specific track within that genre.
+    *   Basic MIDI file loading and playback controls (Play/Pause/Stop).
 *   **GM2 Sounds:** Basic interface for sending program/bank changes.
     - **Status (2024-07-27):** Functionality restored. The GM2 Sound Selector component is now correctly rendered within the "GM2 Sounds" tab in the `Controls` component and successfully passes the `sendMessage` function to allow sending MIDI messages.
 
