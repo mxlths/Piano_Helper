@@ -1,4 +1,4 @@
-Sor# Piano Helper - React Refactoring Plan
+Sor # Piano Helper - React Refactoring Plan
 
 **Version:** 1.0
 **Date:** 2024-07-27

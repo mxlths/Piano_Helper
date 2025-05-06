@@ -87,10 +87,8 @@ This structure provides a solid foundation. The plan for the Chord Progression m
 *   **Metronome:** Basic metronome functionality.
 *   **MIDI Player:** Basic MIDI file loading and playback.
 *   **GM2 Sounds:** Basic interface for sending program/bank changes.
+    - **Status (2024-07-27):** Functionality restored. The GM2 Sound Selector component is now correctly rendered within the "GM2 Sounds" tab in the `Controls` component and successfully passes the `sendMessage` function to allow sending MIDI messages.
 
 ## MIDI Output
 
-- **Sending Messages:** The `useMidi` hook provides a `sendMessage` function.
-    - **Status (2024-07-26):** The `sendMessage` function accepts separate `status` (Number) and `data` (Array) arguments. This is the required format for `webmidi.js` v2.5.3's `output.send(status, data)` method.
-    - **Correction (2024-07-26):** An earlier attempt to pass a single message array `[status, ...data]` was incorrect for v2.5.3 and caused errors. This has been reverted.
-    - Components like `Gm2SoundSelector` and utilities like `selectDrumKit`, as well as the MIDI file playback logic in `App.jsx`, now correctly call `sendMessage(statusByte, dataBytes)`. 
+- **Sending Messages:** The `
